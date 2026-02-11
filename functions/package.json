@@ -1,0 +1,15 @@
+{
+  "name": "free-api-functions",
+  "version": "1.0.0",
+  "description": "Firebase Cloud Functions backend for Free API",
+  "main": "index.js",
+  "type": "commonjs",
+  "engines": { "node": "18" },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "firebase-admin": "^12.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "nanoid": "^5.0.4"
+  }
+}
