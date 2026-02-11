@@ -8,7 +8,8 @@ function getApp() {
 
 export default async function handler(req, res) {
   const fastify = await getApp();
-  const url = req.url || `/api/${(req.query.path || []).join('/')}`;
+  let url = req.url || `/api/${(req.query.path || []).join('/')}`;
+  if (url === '/' || url === '') url = '/api';
   const payload =
     req.method !== 'GET' && req.method !== 'HEAD'
       ? typeof req.body === 'string'
