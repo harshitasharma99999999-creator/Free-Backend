@@ -41,8 +41,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    let url = req.url || `/api/${(req.query.path || []).join('/')}`;
-    if (url === '/' || url === '') url = '/api';
+    const rawPath = req.query?.path;
+    const joinedPath = Array.isArray(rawPath)
+      ? rawPath.join('/')
+      : typeof rawPath === 'string'
+        ? rawPath
+        : '';
+
+    let url = req.url || '';
+    if (joinedPath) {
+      const normalized = `/api/${joinedPath}`;
+      // In some Vercel invocations nested paths arrive partially in req.url.
+      if (!url || !url.includes(joinedPath)) {
+        url = normalized;
+      }
+    }
+    if (!url || url === '/') url = '/api';
+    if (!url.startsWith('/api')) {
+      url = joinedPath ? `/api/${joinedPath}` : '/api';
+    }
 
     const payload =
       req.method !== 'GET' && req.method !== 'HEAD'
