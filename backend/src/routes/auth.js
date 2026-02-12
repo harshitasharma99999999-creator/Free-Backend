@@ -2,7 +2,11 @@ import { config } from '../config.js';
 import { verifyFirebaseToken } from '../lib/firebaseAdmin.js';
 
 export default async function authRoutes(fastify) {
-  const users = fastify.mongo.db.collection('users');
+  const getUsers = () => {
+    const db = fastify.mongo?.db;
+    if (!db) throw new Error('Database unavailable');
+    return db.collection('users');
+  };
 
   // Exchange Firebase ID token for backend JWT (Firebase Auth on frontend)
   fastify.post('/firebase', {
@@ -30,6 +34,12 @@ export default async function authRoutes(fastify) {
       },
     },
     handler: async (request, reply) => {
+      let users;
+      try {
+        users = getUsers();
+      } catch {
+        return reply.code(503).send({ error: 'Database unavailable' });
+      }
       const { idToken } = request.body;
       let decoded;
       try {
@@ -90,6 +100,12 @@ export default async function authRoutes(fastify) {
       },
     },
     handler: async (request, reply) => {
+      let users;
+      try {
+        users = getUsers();
+      } catch {
+        return reply.code(503).send({ error: 'Database unavailable' });
+      }
       const { email, password, name } = request.body;
       const existing = await users.findOne({ email: email.toLowerCase() });
       if (existing) {
@@ -143,6 +159,12 @@ export default async function authRoutes(fastify) {
       },
     },
     handler: async (request, reply) => {
+      let users;
+      try {
+        users = getUsers();
+      } catch {
+        return reply.code(503).send({ error: 'Database unavailable' });
+      }
       const { email, password } = request.body;
       const user = await users.findOne({ email: email.toLowerCase() });
       if (!user) {
@@ -187,8 +209,17 @@ export default async function authRoutes(fastify) {
       },
     },
     handler: async (request, reply) => {
+      let users;
+      try {
+        users = getUsers();
+      } catch {
+        return reply.code(503).send({ error: 'Database unavailable' });
+      }
+      if (!fastify.mongo?.ObjectId) {
+        return reply.code(503).send({ error: 'Database unavailable' });
+      }
       const user = await users.findOne(
-        { _id: request.mongo.ObjectId(request.user.id) },
+        { _id: fastify.mongo.ObjectId(request.user.id) },
         { projection: { password: 0 } }
       );
       if (!user) {

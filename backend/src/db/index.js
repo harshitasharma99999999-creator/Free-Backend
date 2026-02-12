@@ -15,10 +15,7 @@ async function dbPlugin(fastify) {
     console.log('[DB] MongoDB connected');
   } catch (err) {
     console.error('[DB] MongoDB connection failed:', err.message);
-    // Decorate with null so the app still boots — routes will get errors when they try to use it
-    if (!fastify.mongo) {
-      fastify.decorate('mongo', { db: null, client: null, ObjectId: null });
-    }
+    // Keep app booting; routes using DB will return 503 via guards.
   }
 
   fastify.decorate('ensureIndexes', async function ensureIndexes() {

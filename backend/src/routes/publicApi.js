@@ -2,10 +2,17 @@ import { checkRateLimit } from '../lib/rateLimit.js';
 import { isValidApiKeyFormat } from '../lib/apiKey.js';
 
 export default async function publicApiRoutes(fastify) {
-  const apiKeys = fastify.mongo.db.collection('api_keys');
-  const usage = fastify.mongo.db.collection('usage');
+  const getCollections = () => {
+    const db = fastify.mongo?.db;
+    if (!db) throw new Error('Database unavailable');
+    return {
+      apiKeys: db.collection('api_keys'),
+      usage: db.collection('usage'),
+    };
+  };
 
   async function recordUsage(apiKeyId, count = 1) {
+    const { usage } = getCollections();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     await usage.updateOne(
@@ -16,6 +23,12 @@ export default async function publicApiRoutes(fastify) {
   }
 
   fastify.addHook('preHandler', async (request, reply) => {
+    let apiKeys;
+    try {
+      ({ apiKeys } = getCollections());
+    } catch {
+      return reply.code(503).send({ error: 'Database unavailable' });
+    }
     const rawKey = request.headers['x-api-key'] || request.query?.apiKey;
     if (!rawKey) {
       return reply.code(401).send({

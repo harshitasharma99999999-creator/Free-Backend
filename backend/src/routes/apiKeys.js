@@ -1,7 +1,11 @@
 import { generateApiKey } from '../lib/apiKey.js';
 
 export default async function apiKeysRoutes(fastify) {
-  const apiKeys = fastify.mongo.db.collection('api_keys');
+  const getApiKeys = () => {
+    const db = fastify.mongo?.db;
+    if (!db) throw new Error('Database unavailable');
+    return db.collection('api_keys');
+  };
 
   fastify.addHook('onRequest', fastify.authenticate);
 
@@ -27,6 +31,12 @@ export default async function apiKeysRoutes(fastify) {
       },
     },
     handler: async (request, reply) => {
+      let apiKeys;
+      try {
+        apiKeys = getApiKeys();
+      } catch {
+        return reply.code(503).send({ error: 'Database unavailable' });
+      }
       const userId = request.user.id;
       const { name } = request.body;
       const key = generateApiKey();
@@ -67,7 +77,13 @@ export default async function apiKeysRoutes(fastify) {
         },
       },
     },
-    handler: async (request) => {
+    handler: async (request, reply) => {
+      let apiKeys;
+      try {
+        apiKeys = getApiKeys();
+      } catch {
+        return reply.code(503).send({ error: 'Database unavailable' });
+      }
       const keys = await apiKeys
         .find({ userId: request.user.id })
         .project({ key: 0, userId: 0 })
@@ -93,9 +109,18 @@ export default async function apiKeysRoutes(fastify) {
       response: { 204: { type: 'null' } },
     },
     handler: async (request, reply) => {
+      let apiKeys;
+      try {
+        apiKeys = getApiKeys();
+      } catch {
+        return reply.code(503).send({ error: 'Database unavailable' });
+      }
+      if (!fastify.mongo?.ObjectId) {
+        return reply.code(503).send({ error: 'Database unavailable' });
+      }
       const { id } = request.params;
       const result = await apiKeys.deleteOne({
-        _id: request.mongo.ObjectId(id),
+        _id: fastify.mongo.ObjectId(id),
         userId: request.user.id,
       });
       if (result.deletedCount === 0) {

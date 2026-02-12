@@ -1,6 +1,12 @@
 export default async function usageRoutes(fastify) {
-  const usage = fastify.mongo.db.collection('usage');
-  const apiKeys = fastify.mongo.db.collection('api_keys');
+  const getCollections = () => {
+    const db = fastify.mongo?.db;
+    if (!db) throw new Error('Database unavailable');
+    return {
+      usage: db.collection('usage'),
+      apiKeys: db.collection('api_keys'),
+    };
+  };
 
   fastify.addHook('onRequest', fastify.authenticate);
 
@@ -31,7 +37,14 @@ export default async function usageRoutes(fastify) {
         },
       },
     },
-    handler: async (request) => {
+    handler: async (request, reply) => {
+      let usage;
+      let apiKeys;
+      try {
+        ({ usage, apiKeys } = getCollections());
+      } catch {
+        return reply.code(503).send({ error: 'Database unavailable' });
+      }
       const days = Math.min(90, request.query.days || 30);
       const since = new Date();
       since.setDate(since.getDate() - days);
