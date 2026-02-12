@@ -18,9 +18,11 @@ function getApp() {
 
 export default async function handler(req, res) {
   // Set CORS headers for every response (even errors)
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-API-Key');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
 
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
@@ -60,7 +62,10 @@ export default async function handler(req, res) {
     const headers = response.headers;
     if (headers) {
       for (const [k, v] of Object.entries(headers)) {
-        if (k !== 'transfer-encoding') res.setHeader(k, v);
+        // Skip transfer-encoding and CORS headers (we handle CORS ourselves above)
+        if (k === 'transfer-encoding') continue;
+        if (k.startsWith('access-control-')) continue;
+        res.setHeader(k, v);
       }
     }
     res.end(response.payload);
