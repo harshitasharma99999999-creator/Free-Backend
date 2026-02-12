@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin';
-import { hash, compare } from 'bcryptjs';
+import bcryptjs from 'bcryptjs';
+const { hash, compare } = bcryptjs;
 
 const SALT_ROUNDS = 10;
 
