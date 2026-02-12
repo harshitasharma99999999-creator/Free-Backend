@@ -48,6 +48,42 @@ export async function buildApp() {
     });
   });
 
+  // Diagnostic endpoint — remove after debugging
+  fastify.get('/api/debug/health', async (_, reply) => {
+    const checks = {};
+    // DB check
+    try {
+      const db = fastify.mongo?.db;
+      if (db) {
+        await db.command({ ping: 1 });
+        checks.mongodb = 'connected';
+      } else {
+        checks.mongodb = 'no db object';
+      }
+    } catch (err) {
+      checks.mongodb = `error: ${err.message}`;
+    }
+    // Firebase Admin check
+    try {
+      const { getFirebaseAdmin } = await import('./lib/firebaseAdmin.js');
+      const app = getFirebaseAdmin();
+      checks.firebase = app ? 'initialised' : 'null';
+    } catch (err) {
+      checks.firebase = `error: ${err.message}`;
+    }
+    // Env check (show presence, not values)
+    checks.env = {
+      MONGODB_URI: !!process.env.MONGODB_URI,
+      JWT_SECRET: !!process.env.JWT_SECRET,
+      CORS_ORIGINS: process.env.CORS_ORIGINS || '(not set)',
+      FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '(not set)',
+      FIREBASE_CLIENT_EMAIL: !!process.env.FIREBASE_CLIENT_EMAIL,
+      FIREBASE_PRIVATE_KEY: !!process.env.FIREBASE_PRIVATE_KEY,
+      FIREBASE_PRIVATE_KEY_LENGTH: (process.env.FIREBASE_PRIVATE_KEY || '').length,
+    };
+    reply.send(checks);
+  });
+
   // Index creation in background — never crash the app
   try {
     fastify.ensureIndexes().catch((err) => {
