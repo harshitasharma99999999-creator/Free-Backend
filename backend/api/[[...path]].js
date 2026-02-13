@@ -58,7 +58,9 @@ export default async function handler(req, res) {
     }
     if (!url || url === '/') url = '/api';
     if (!url.startsWith('/api')) {
-      url = joinedPath ? `/api/${joinedPath}` : '/api';
+      // Vercel can pass '/auth/...' for this catch-all route.
+      // Preserve the full nested path and prepend '/api'.
+      url = `/api${url.startsWith('/') ? url : `/${url}`}`;
     }
 
     const payload =
