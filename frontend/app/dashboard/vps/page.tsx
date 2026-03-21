@@ -458,7 +458,7 @@ export default function VpsPage() {
   }
 
   const isHetznerError = error === 'hetzner_not_configured';
-  const activeInstances = instances.filter((v) => v.status !== 'deleted');
+  const activeInstances = instances;
 
   return (
     <div className="h-full overflow-y-auto bg-[#0f0f0f] px-6 py-6">
