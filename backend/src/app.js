@@ -9,6 +9,10 @@ import authRoutes from './routes/auth.js';
 import apiKeysRoutes from './routes/apiKeys.js';
 import usageRoutes from './routes/usage.js';
 import publicApiRoutes from './routes/publicApi.js';
+import openaiRoutes from './routes/openai.js';
+import eiorOpenaiRoutes from './routes/eiorOpenai.js';
+import freeChatRoutes from './routes/freeChat.js';
+import freeVibecodeRoutes from './routes/freeVibecode.js';
 
 export async function buildApp() {
   const fastify = Fastify({
@@ -23,7 +27,40 @@ export async function buildApp() {
   });
 
   await fastify.register(cors, {
-    origin: config.cors.origins,
+    origin: (origin, callback) => {
+      // Server-to-server requests don't have an Origin header
+      // Allow these requests to bypass CORS (no CORS headers added)
+      if (!origin) {
+        callback(null, false);
+        return;
+      }
+
+      // Browser requests have an Origin header
+      // Apply CORS validation for allowed origins
+      const allowedOrigins = config.cors.origins;
+      
+      // Handle wildcard or array of origins
+      if (allowedOrigins === '*' || allowedOrigins === true) {
+        callback(null, true);
+        return;
+      }
+
+      if (Array.isArray(allowedOrigins)) {
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+        return;
+      }
+
+      // Single origin string
+      if (allowedOrigins === origin) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
@@ -38,6 +75,20 @@ export async function buildApp() {
   await fastify.register(apiKeysRoutes, { prefix: '/api/keys' });
   await fastify.register(usageRoutes, { prefix: '/api/usage' });
   await fastify.register(publicApiRoutes, { prefix: '/api/public' });
+  // Secondary prefix for developer integrations (works reliably across hosting rewrites).
+  await fastify.register(publicApiRoutes, { prefix: '/api/developer' });
+
+  // Free dashboard chat (no API key required; uses Firebase/backend auth)
+  await fastify.register(freeChatRoutes, { prefix: '/api/chat' });
+
+  // Free vibecode (no API key required)
+  await fastify.register(freeVibecodeRoutes, { prefix: '/api/vibecode' });
+
+  // OpenAI-compatible API — swap baseURL to this server's /v1 in any OpenAI SDK
+  await fastify.register(openaiRoutes, { prefix: '/v1' });
+
+  // EIOR OpenAI-compatible API for OpenClaw integration
+  await fastify.register(eiorOpenaiRoutes, { prefix: '/eior/v1' });
 
   // Root health-check endpoint (no DB needed)
   fastify.get('/api', (_, reply) => {
@@ -48,40 +99,22 @@ export async function buildApp() {
     });
   });
 
-  // Diagnostic endpoint — remove after debugging
-  fastify.get('/api/debug/health', async (_, reply) => {
-    const checks = {};
-    // DB check
-    try {
-      const db = fastify.mongo?.db;
-      if (db) {
-        await db.command({ ping: 1 });
-        checks.mongodb = 'connected';
-      } else {
-        checks.mongodb = 'no db object';
-      }
-    } catch (err) {
-      checks.mongodb = `error: ${err.message}`;
-    }
-    // Firebase Admin check
-    try {
-      const { getFirebaseAdmin } = await import('./lib/firebaseAdmin.js');
-      const app = getFirebaseAdmin();
-      checks.firebase = app ? 'initialised' : 'null';
-    } catch (err) {
-      checks.firebase = `error: ${err.message}`;
-    }
-    // Env check (show presence, not values)
-    checks.env = {
-      MONGODB_URI: !!process.env.MONGODB_URI,
-      JWT_SECRET: !!process.env.JWT_SECRET,
-      CORS_ORIGINS: process.env.CORS_ORIGINS || '(not set)',
-      FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '(not set)',
-      FIREBASE_CLIENT_EMAIL: !!process.env.FIREBASE_CLIENT_EMAIL,
-      FIREBASE_PRIVATE_KEY: !!process.env.FIREBASE_PRIVATE_KEY,
-      FIREBASE_PRIVATE_KEY_LENGTH: (process.env.FIREBASE_PRIVATE_KEY || '').length,
-    };
-    reply.send(checks);
+  // Public integration config — no API key required. Developers fetch this and add their API key in their app.
+  const baseUrl = config.apiBaseUrl.replace(/\/+$/, '');
+  fastify.get('/api/integration-config', (_, reply) => {
+    reply.send({
+      baseUrl,
+      auth: {
+        register: `${baseUrl}/api/auth/client-register`,
+        login: `${baseUrl}/api/auth/client-login`,
+        me: `${baseUrl}/api/auth/client-me`,
+      },
+      headers: {
+        apiKey: 'X-API-Key',
+        authorization: 'Authorization',
+      },
+      usage: 'Add your API key to X-API-Key header. For /me, also send Authorization: Bearer <token>.',
+    });
   });
 
   // Index creation in background — never crash the app

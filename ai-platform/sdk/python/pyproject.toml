@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "eior"
+version = "1.0.0"
+description = "Official Python SDK for the Eior AI API — free OpenAI-compatible LLM"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.8"
+keywords = ["ai", "llm", "openai", "eior", "chatbot"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "openai>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://free-backed.web.app"
+Documentation = "https://free-backed.web.app/docs.html"
+Repository = "https://github.com/eior/eior-python"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["eior*"]

@@ -1,0 +1,97 @@
+services:
+  # ── Fastify API ─────────────────────────────────────────────────────────────
+  api:
+    build: .
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_platform
+      REDIS_URL: redis://redis:6379
+      OLLAMA_BASE_URL: http://ollama:11434
+      SD_BASE_URL: http://sd-api:7860
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "node -e \"
+        const { Pool } = require('pg');
+        const p = new Pool({ connectionString: process.env.DATABASE_URL });
+        p.query(require('fs').readFileSync('/app/scripts/init-db.sql', 'utf8'))
+          .then(() => { console.log('DB init ok'); p.end(); })
+          .catch(e => { console.log('DB already init:', e.message); p.end(); });
+      \" && node dist/server.js"
+    restart: unless-stopped
+    volumes:
+      - ./scripts:/app/scripts:ro
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ai_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ai_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Ollama (Local LLM) ──────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    # Pull the default model on first start
+    entrypoint: >
+      sh -c "ollama serve &
+             sleep 5 &&
+             ollama pull ${OLLAMA_MODEL:-llama3.2} &&
+             wait"
+    restart: unless-stopped
+
+  # ── Stable Diffusion (Automatic1111) — GPU optional ─────────────────────────
+  # Remove this service if you don't have a GPU.
+  # Requires: docker run with --gpus all flag or Docker Desktop GPU support.
+  sd-api:
+    image: universonic/stable-diffusion-webui:latest
+    ports:
+      - "7860:7860"
+    volumes:
+      - sd_models:/stable-diffusion-webui/models
+      - sd_outputs:/stable-diffusion-webui/outputs
+    environment:
+      - COMMANDLINE_ARGS=--api --listen --nowebui --no-download-sd-model
+    profiles:
+      - gpu   # Only start with: docker compose --profile gpu up
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_models:
+  sd_models:
+  sd_outputs:

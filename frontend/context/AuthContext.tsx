@@ -3,31 +3,30 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
-  updateProfile,
   User as FirebaseUser,
 } from 'firebase/auth';
 import { firebaseAuth } from '@/lib/firebase';
-import { api, type User } from '@/lib/api';
+import { type User, type ApiKeyCreated, keys as keysApi } from '@/lib/api';
 
 type AuthContextType = {
   user: User | null;
   loading: boolean;
-  /** True when we have a backend JWT (API keys and usage will work). */
+  /** True when a Firebase user is signed in — all backend calls will work. */
   backendConnected: boolean;
-  login: (token: string, user: User) => void;
-  /** Sign in with Firebase user only (no backend token). Dashboard works; keys/usage need backend. */
-  loginFirebaseOnly: (user: User) => void;
+  setUser: (u: User | null) => void;
   logout: () => void;
+  /** Legacy helpers kept so login/register pages compile without changes. */
+  login: (token: string, user: User) => void;
+  loginFirebaseOnly: (user: User) => void;
   refreshUser: () => Promise<void>;
   exchangeFirebaseToken: (idToken: string) => Promise<{ user: User; token: string }>;
+  createApiKey: (name: string) => Promise<ApiKeyCreated>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function firebaseUserToUser(fb: FirebaseUser): User {
+function fbToUser(fb: FirebaseUser): User {
   return {
     id: fb.uid,
     email: fb.email ?? '',
@@ -39,114 +38,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const login = (token: string, u: User) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('token', token);
-      setUser(u);
-    }
-  };
-
-  const loginFirebaseOnly = (u: User) => {
-    if (typeof window !== 'undefined') localStorage.removeItem('token');
-    setUser(u);
-  };
+  useEffect(() => {
+    const unsub = onAuthStateChanged(firebaseAuth, (fb) => {
+      setUser(fb ? fbToUser(fb) : null);
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
 
   const logout = () => {
-    if (typeof window !== 'undefined') localStorage.removeItem('token');
     setUser(null);
+    // Clear any legacy stored token
+    if (typeof window !== 'undefined') localStorage.removeItem('token');
     firebaseSignOut(firebaseAuth).catch(() => {});
   };
 
-  const exchangeFirebaseToken = async (idToken: string) => {
-    const res = await api<{ user: User; token: string }>('/api/auth/firebase', {
-      method: 'POST',
-      body: JSON.stringify({ idToken }),
-    });
-    return res;
-  };
+  // ── Legacy shims so login/register pages still compile ──────────────────────
+  const login = (_token: string, u: User) => setUser(u);
+  const loginFirebaseOnly = (u: User) => setUser(u);
 
   const refreshUser = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      const fbUser = firebaseAuth.currentUser;
-      if (fbUser) {
-        const idToken = await fbUser.getIdToken();
-        try {
-          const { user: u, token: t } = await exchangeFirebaseToken(idToken);
-          localStorage.setItem('token', t);
-          setUser(u);
-        } catch {
-          setUser(firebaseUserToUser(fbUser));
-        }
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-      return;
+    const fb = firebaseAuth.currentUser;
+    if (fb) setUser(fbToUser(fb));
+  };
+
+  // No longer needed — kept so call sites compile without changes
+  const exchangeFirebaseToken = async (_idToken: string): Promise<{ user: User; token: string }> => {
+    const fb = firebaseAuth.currentUser;
+    const u = fb ? fbToUser(fb) : { id: '', email: '', name: '' };
+    return { user: u, token: '' };
+  };
+
+  const createApiKey = async (name: string): Promise<ApiKeyCreated> => {
+    if (!user) {
+      throw new Error('Authentication required. Please sign in to create API keys.');
     }
+    
     try {
-      const { user: u } = await api<{ user: User }>('/api/auth/me');
-      setUser(u);
-    } catch {
-      const fbUser = firebaseAuth.currentUser;
-      if (fbUser) {
-        const idToken = await fbUser.getIdToken();
-        try {
-          const { user: u, token: t } = await exchangeFirebaseToken(idToken);
-          localStorage.setItem('token', t);
-          setUser(u);
-        } catch {
-          setUser(firebaseUserToUser(fbUser));
+      return await keysApi.create(name);
+    } catch (error) {
+      // Provide more specific error messages for authentication issues
+      if (error instanceof Error) {
+        if (error.message.includes('Authentication required')) {
+          throw new Error('Authentication required. Please sign in to create API keys.');
         }
-      } else {
-        logout();
+        if (error.message.includes('Invalid Firebase token')) {
+          throw new Error('Your session has expired. Please sign out and sign in again.');
+        }
+        if (error.message.includes('Unauthorized')) {
+          throw new Error('Authentication failed. Please sign out and sign in again.');
+        }
       }
-    } finally {
-      setLoading(false);
+      throw error;
     }
   };
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(firebaseAuth, async (fbUser) => {
-      if (!fbUser) {
-        if (typeof window !== 'undefined') localStorage.removeItem('token');
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      if (token) {
-        try {
-          const { user: u } = await api<{ user: User }>('/api/auth/me');
-          setUser(u);
-        } catch {
-          const idToken = await fbUser.getIdToken();
-          try {
-            const { user: u, token: t } = await exchangeFirebaseToken(idToken);
-            if (typeof window !== 'undefined') localStorage.setItem('token', t);
-            setUser(u);
-          } catch {
-            setUser(firebaseUserToUser(fbUser));
-          }
-        }
-      } else {
-        // No backend token (e.g. page refresh): exchange Firebase token for JWT so API keys/usage work
-        const idToken = await fbUser.getIdToken();
-        try {
-          const { user: u, token: t } = await exchangeFirebaseToken(idToken);
-          if (typeof window !== 'undefined') localStorage.setItem('token', t);
-          setUser(u);
-        } catch {
-          setUser(firebaseUserToUser(fbUser));
-        }
-      }
-      setLoading(false);
-    });
-    return () => unsub();
-  }, []);
-
-  const backendConnected =
-    typeof window !== 'undefined' && !!localStorage.getItem('token');
+  // Connected whenever a Firebase user exists (no custom JWT needed)
+  const backendConnected = !!user;
 
   return (
     <AuthContext.Provider
@@ -154,11 +102,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         backendConnected,
+        setUser,
+        logout,
         login,
         loginFirebaseOnly,
-        logout,
         refreshUser,
         exchangeFirebaseToken,
+        createApiKey,
       }}
     >
       {children}

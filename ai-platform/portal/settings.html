@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — Eior</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="config.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); }
+
+    /* Sidebar — matches dashboard.html */
+    .sidebar {
+      width: 260px; flex-shrink: 0; display: flex; flex-direction: column;
+      background: #111111; border-right: 1px solid rgba(255,255,255,.07); height: 100vh; overflow: hidden;
+    }
+    .sidebar-top { padding: 1.1rem 1rem .75rem; flex-shrink: 0; }
+    .sidebar-brand { font-size: 1.1rem; font-weight: 900; color: var(--primary-h); letter-spacing: -.5px; text-decoration: none; }
+    .sidebar-nav-link {
+      display: flex; align-items: center; gap: .65rem; padding: .55rem .75rem; border-radius: 7px;
+      color: var(--muted); font-size: .83rem; font-weight: 500; text-decoration: none;
+      transition: background .12s, color .12s;
+    }
+    .sidebar-nav-link:hover { background: rgba(255,255,255,.06); color: var(--text); }
+    .sidebar-nav-link.active { background: rgba(99,102,241,.18); color: #c4b5fd; font-weight: 600; }
+    .sidebar-nav-link svg { flex-shrink: 0; }
+    .sidebar-links { flex: 1; padding: .25rem .5rem; display: flex; flex-direction: column; gap: .1rem; }
+    .sidebar-footer {
+      flex-shrink: 0; border-top: 1px solid rgba(255,255,255,.07); padding: .6rem .5rem;
+    }
+    .sidebar-user {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .6rem .75rem; border-top: 1px solid rgba(255,255,255,.07); margin-top: .25rem;
+    }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%; background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .72rem; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .user-name-small { font-size: .78rem; color: var(--text); font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Main scroll area */
+    .main { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.08) transparent; }
+    .main::-webkit-scrollbar { width: 5px; }
+    .main::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
+
+    .settings-wrap { max-width: 680px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+
+    .page-title { font-size: 1.5rem; font-weight: 700; color: var(--text); margin-bottom: .3rem; }
+    .page-sub   { font-size: .875rem; color: var(--muted); margin-bottom: 2rem; }
+
+    /* Section cards */
+    .section {
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px; overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .section-header {
+      padding: 1.1rem 1.4rem; border-bottom: 1px solid rgba(255,255,255,.07);
+      background: rgba(255,255,255,.02);
+    }
+    .section-title { font-size: .9rem; font-weight: 700; color: var(--text); }
+    .section-desc  { font-size: .78rem; color: var(--muted); margin-top: .2rem; }
+
+    .setting-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .95rem 1.4rem; border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label { font-size: .85rem; font-weight: 500; color: var(--text); margin-bottom: .15rem; }
+    .setting-desc  { font-size: .75rem; color: var(--muted); }
+    .setting-val   { font-size: .85rem; color: var(--muted); font-weight: 500; text-align: right; flex-shrink: 0; margin-left: 1rem; }
+    .setting-val.mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: .75rem; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 0; }
+    .stat-cell {
+      padding: 1.1rem 1.4rem; border-right: 1px solid rgba(255,255,255,.05);
+      text-align: center;
+    }
+    .stat-cell:last-child { border-right: none; }
+    .stat-num   { font-size: 1.5rem; font-weight: 700; color: var(--primary-h); }
+    .stat-label { font-size: .72rem; color: var(--muted); margin-top: .2rem; }
+
+    /* Limit pills row */
+    .limits-grid { display: grid; grid-template-columns: 1fr 1fr; }
+    .limit-cell { padding: .95rem 1.4rem; border-right: 1px solid rgba(255,255,255,.05); border-bottom: 1px solid rgba(255,255,255,.05); }
+    .limit-cell:nth-child(2n) { border-right: none; }
+    .limit-cell:nth-last-child(-n+2) { border-bottom: none; }
+    .limit-num   { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    .limit-label { font-size: .72rem; color: var(--muted); margin-top: .2rem; }
+
+    /* Badge */
+    .badge-purple {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .25rem .7rem; border-radius: 20px; font-size: .72rem; font-weight: 600;
+      background: rgba(139,92,246,.18); color: #c4b5fd; border: 1px solid rgba(139,92,246,.3);
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #a78bfa; }
+
+    /* Danger zone */
+    .section.danger { border-color: rgba(239,68,68,.25); }
+    .section.danger .section-header { background: rgba(239,68,68,.05); border-color: rgba(239,68,68,.15); }
+    .section.danger .section-title { color: #f87171; }
+
+    .btn-outline-sm {
+      padding: .35rem .9rem; border-radius: 7px; border: 1px solid rgba(255,255,255,.15);
+      background: none; color: var(--text); font-size: .78rem; cursor: pointer;
+      transition: background .12s; font-family: var(--font);
+    }
+    .btn-outline-sm:hover { background: rgba(255,255,255,.07); }
+    .btn-danger-sm {
+      padding: .35rem .9rem; border-radius: 7px; border: 1px solid rgba(239,68,68,.4);
+      background: rgba(239,68,68,.1); color: #f87171; font-size: .78rem; cursor: pointer;
+      transition: background .12s; font-family: var(--font);
+    }
+    .btn-danger-sm:hover { background: rgba(239,68,68,.2); }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-top">
+    <a href="dashboard.html" class="sidebar-brand">Eior</a>
+  </div>
+  <div class="sidebar-links">
+    <a href="dashboard.html" class="sidebar-nav-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+      Chat
+    </a>
+    <a href="models.html" class="sidebar-nav-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+      Models
+    </a>
+    <a href="vps.html" class="sidebar-nav-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
+        <line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+      </svg>
+      VPS
+    </a>
+    <a href="docs.html" class="sidebar-nav-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/>
+      </svg>
+      API Docs
+    </a>
+    <a href="settings.html" class="sidebar-nav-link active">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+      Settings
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <a href="keys.html" class="sidebar-nav-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+      </svg>
+      API Keys
+    </a>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <span class="user-name-small" id="userEmail">Loading…</span>
+      <button onclick="signOut()" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:.2rem;" title="Sign out">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <div class="settings-wrap">
+    <h1 class="page-title">Settings</h1>
+    <p class="page-sub">Manage your account and preferences</p>
+
+    <!-- Account -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Account</div>
+        <div class="section-desc">Your profile and authentication details</div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Email address</div>
+          <div class="setting-desc">Used for login and notifications</div>
+        </div>
+        <div class="setting-val" id="settingsEmail">—</div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Account ID</div>
+          <div class="setting-desc">Your unique Firebase UID</div>
+        </div>
+        <div class="setting-val mono" id="settingsUid">—</div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Plan</div>
+          <div class="setting-desc">Current billing tier</div>
+        </div>
+        <span class="badge-purple"><span class="badge-dot"></span> Free Beta</span>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Member since</div>
+          <div class="setting-desc">Account creation date</div>
+        </div>
+        <div class="setting-val" id="settingsSince">—</div>
+      </div>
+    </div>
+
+    <!-- Usage stats -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Usage</div>
+        <div class="section-desc">Your all-time usage statistics</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-cell">
+          <div class="stat-num" id="statReqs">—</div>
+          <div class="stat-label">Total requests</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-num" id="statTokens">—</div>
+          <div class="stat-label">Tokens generated</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-num" id="statKeys">—</div>
+          <div class="stat-label">Active API keys</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Limits -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">API Limits</div>
+        <div class="section-desc">Rate limits applied to all API keys on this account</div>
+      </div>
+      <div class="limits-grid">
+        <div class="limit-cell">
+          <div class="limit-num">60 RPM</div>
+          <div class="limit-label">Requests per minute (per key)</div>
+        </div>
+        <div class="limit-cell">
+          <div class="limit-num">1,000 RPD</div>
+          <div class="limit-label">Requests per day</div>
+        </div>
+        <div class="limit-cell">
+          <div class="limit-num">10</div>
+          <div class="limit-label">Max API keys</div>
+        </div>
+        <div class="limit-cell">
+          <div class="limit-num">32K</div>
+          <div class="limit-label">Max tokens per request</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="section danger">
+      <div class="section-header">
+        <div class="section-title">Danger Zone</div>
+        <div class="section-desc">Irreversible account actions</div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Sign out</div>
+          <div class="setting-desc">Sign out of this browser session</div>
+        </div>
+        <button class="btn-outline-sm" onclick="signOut()">Sign out</button>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Delete account</div>
+          <div class="setting-desc">Permanently delete your account and all API keys</div>
+        </div>
+        <button class="btn-danger-sm" onclick="alert('Contact support to delete your account.')">Delete account</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, onAuthStateChanged, signOut as fbSignOut }
+    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+  const fbApp = initializeApp(window.FIREBASE_CONFIG);
+  const auth  = getAuth(fbApp);
+  const API   = window.API_BASE;
+
+  onAuthStateChanged(auth, async user => {
+    if (!user) { window.location.href = 'index.html'; return; }
+
+    document.getElementById('userAvatar').textContent  = (user.email?.[0] ?? '?').toUpperCase();
+    document.getElementById('userEmail').textContent   = user.email ?? '';
+    document.getElementById('settingsEmail').textContent = user.email ?? '—';
+    document.getElementById('settingsUid').textContent   = user.uid;
+
+    // Use Firebase metadata for accurate creation date
+    const createdAt = user.metadata?.creationTime;
+    document.getElementById('settingsSince').textContent = createdAt
+      ? new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      : '—';
+
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const { usage, activeKeys } = await res.json();
+        const total = (usage.total_requests ?? 0);
+        const tokens = (usage.total_prompt_tokens ?? 0) + (usage.total_completion_tokens ?? 0);
+        document.getElementById('statReqs').textContent   = total.toLocaleString();
+        document.getElementById('statTokens').textContent = tokens >= 1000
+          ? (tokens / 1000).toFixed(1) + 'K' : tokens.toLocaleString();
+        document.getElementById('statKeys').textContent   = activeKeys;
+      }
+    } catch (_) {}
+  });
+
+  window.signOut = async () => { await fbSignOut(auth); window.location.href = 'index.html'; };
+</script>
+</body>
+</html>

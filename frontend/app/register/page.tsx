@@ -9,28 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-
-function isNetworkOrBackendError(err: unknown): boolean {
-  if (err instanceof TypeError && err.message === 'Failed to fetch') return true;
-  if (err instanceof Error && err.message.toLowerCase().includes('fetch')) return true;
-  return false;
-}
-
-function firebaseUserToUser(fb: { uid: string; email: string | null; displayName: string | null }): { id: string; email: string; name: string } {
-  return {
-    id: fb.uid,
-    email: fb.email ?? '',
-    name: fb.displayName ?? fb.email ?? 'User',
-  };
-}
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -39,105 +18,71 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    setInfo('');
     if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
+      return setError('Password must be at least 8 characters.');
     }
     setLoading(true);
     try {
-      const { user: fbUser } = await createUserWithEmailAndPassword(firebaseAuth, email, password);
-      if (name.trim()) await updateProfile(fbUser, { displayName: name.trim() });
-      const idToken = await fbUser.getIdToken();
+      const { user: fb } = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+      if (name.trim()) await updateProfile(fb, { displayName: name.trim() });
+
+      const idToken = await fb.getIdToken();
       try {
         const { token, user } = await exchangeFirebaseToken(idToken);
         login(token, user);
-        router.push('/dashboard');
-        router.refresh();
-      } catch (exchangeErr: unknown) {
-        if (isNetworkOrBackendError(exchangeErr)) {
-          loginFirebaseOnly(firebaseUserToUser(fbUser));
-          setInfo("You're signed in. To create API keys and see usage, the backend must be deployed and connected. See DEPLOY.md for steps.");
-          router.push('/dashboard');
-          router.refresh();
-        } else {
-          throw exchangeErr;
-        }
+      } catch {
+        loginFirebaseOnly({ id: fb.uid, email: fb.email ?? '', name: name || (fb.email ?? 'User') });
       }
+      router.push('/dashboard');
     } catch (err: unknown) {
-      if (!info) setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Create an account</CardTitle>
-          <CardDescription>Get your free API key in seconds</CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
-            {info && (
-              <p className="text-sm text-muted-foreground">{info}</p>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                placeholder="Your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="At least 8 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account...' : 'Sign up'}
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              Already have an account?{' '}
-              <Link href="/login" className="text-primary hover:underline">
-                Sign in
-              </Link>
-            </p>
-          </CardFooter>
+    <div className="min-h-screen flex items-center justify-center bg-[#0f0f0f] p-4">
+      <div className="w-full max-w-sm space-y-6">
+        <div className="text-center space-y-2">
+          <Link href="/" className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-[#10a37f] mb-3">
+            <span className="text-white font-bold text-lg">E</span>
+          </Link>
+          <h1 className="text-2xl font-bold text-white">Create your account</h1>
+          <p className="text-sm text-[#8e8ea0]">Start using EIOR for free — no credit card required</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {error && <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 p-3 rounded-xl">{error}</p>}
+          <input
+            id="name" placeholder="Name (optional)" value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full bg-[#2f2f2f] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-[#8e8ea0] outline-none focus:border-[#10a37f]/50 transition-colors"
+          />
+          <input
+            id="email" type="email" placeholder="Email address" value={email}
+            onChange={(e) => setEmail(e.target.value)} required
+            className="w-full bg-[#2f2f2f] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-[#8e8ea0] outline-none focus:border-[#10a37f]/50 transition-colors"
+          />
+          <input
+            id="password" type="password" placeholder="Password (min 8 characters)" value={password}
+            onChange={(e) => setPassword(e.target.value)} required
+            className="w-full bg-[#2f2f2f] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-[#8e8ea0] outline-none focus:border-[#10a37f]/50 transition-colors"
+          />
+          <button type="submit" disabled={loading}
+            className="w-full py-3 rounded-xl bg-[#10a37f] hover:bg-[#0d9270] disabled:opacity-50 text-white text-sm font-semibold transition-colors">
+            {loading ? 'Creating account…' : 'Create account — free'}
+          </button>
         </form>
-      </Card>
+        <p className="text-sm text-center text-[#8e8ea0]">
+          Already have an account?{' '}
+          <Link href="/login" className="text-[#10a37f] hover:underline font-medium">Sign in</Link>
+        </p>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,25 @@
+{
+  "name": "eior",
+  "version": "1.0.0",
+  "description": "Official Node.js SDK for the Eior AI API — free OpenAI-compatible LLM",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "keywords": ["ai", "llm", "openai", "eior", "chatbot", "sdk"],
+  "author": "Eior",
+  "license": "MIT",
+  "homepage": "https://free-backed.web.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eior/eior-node"
+  },
+  "peerDependencies": {
+    "openai": ">=4.0.0"
+  }
+}

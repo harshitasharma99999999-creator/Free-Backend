@@ -1,0 +1,27 @@
+export declare const config: {
+    PORT: number;
+    NODE_ENV: "development" | "production" | "test";
+    CORS_ORIGIN: string;
+    DATABASE_URL: string;
+    REDIS_URL: string;
+    FIREBASE_PROJECT_ID: string;
+    FIREBASE_CLIENT_EMAIL: string;
+    FIREBASE_PRIVATE_KEY: string;
+    OLLAMA_BASE_URL: string;
+    OLLAMA_MODEL: string;
+    SD_BASE_URL: string;
+    SD_MODEL: string;
+    API_KEY_MAX_PER_USER: number;
+    RATE_LIMIT_RPM: number;
+    RATE_LIMIT_RPD: number;
+    PROXMOX_NODE: string;
+    PROXMOX_STORAGE: string;
+    PROXMOX_TEMPLATE_VMID: number;
+    GROQ_API_KEY?: string | undefined;
+    REPLICATE_API_TOKEN?: string | undefined;
+    HETZNER_API_TOKEN?: string | undefined;
+    PROXMOX_HOST?: string | undefined;
+    PROXMOX_TOKEN_ID?: string | undefined;
+    PROXMOX_TOKEN_SECRET?: string | undefined;
+};
+export type Config = typeof config;

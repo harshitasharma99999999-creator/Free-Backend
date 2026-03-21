@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Keys — Eior</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="config.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    /* ── Sidebar ── */
+    .k-sidebar {
+      width: 260px; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      background: #111111; border-right: 1px solid rgba(255,255,255,.07);
+      height: 100vh; overflow: hidden;
+    }
+    .k-sidebar-logo {
+      padding: 1rem 1rem .8rem;
+      font-size: 1.15rem; font-weight: 800; color: #818cf8;
+      letter-spacing: -.5px; text-decoration: none; display: block;
+      border-bottom: 1px solid rgba(255,255,255,.07); flex-shrink: 0;
+    }
+    .k-sidebar-nav {
+      flex: 1; padding: .6rem .5rem; overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .k-nav-link {
+      display: flex; align-items: center; gap: .65rem;
+      padding: .55rem .75rem; border-radius: 7px;
+      color: #94a3b8; font-size: .83rem; font-weight: 500;
+      text-decoration: none !important; transition: background .12s, color .12s;
+      margin-bottom: 2px; white-space: nowrap;
+    }
+    .k-nav-link:hover { background: rgba(255,255,255,.06); color: #f1f5f9; }
+    .k-nav-link.active { background: rgba(99,102,241,.18); color: #c4b5fd; }
+    .k-nav-link svg { flex-shrink: 0; }
+    .k-sidebar-footer {
+      flex-shrink: 0; border-top: 1px solid rgba(255,255,255,.07); padding: .6rem .5rem;
+    }
+    .k-sidebar-user {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .55rem .75rem; border-top: 1px solid rgba(255,255,255,.07); margin-top: .25rem;
+    }
+    .k-user-avatar {
+      width: 28px; height: 28px; border-radius: 50%; background: #6366f1;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .72rem; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .k-user-name { font-size: .78rem; color: #f1f5f9; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── Main ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .75rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,.07);
+      flex-shrink: 0; min-height: 52px;
+    }
+    .topbar-title { font-size: .95rem; font-weight: 700; color: var(--text); }
+    .content { flex: 1; overflow-y: auto; padding: 2rem; }
+    .content-inner { max-width: 820px; margin: 0 auto; }
+
+    /* ── Create key button ── */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .section-header h2 { font-size: 1.1rem; font-weight: 700; }
+    .section-header p { font-size: .82rem; color: var(--muted); margin-top: .2rem; }
+
+    .create-btn {
+      display: inline-flex; align-items: center; gap: .45rem;
+      padding: .55rem 1.1rem; border-radius: 8px; border: none;
+      background: var(--primary); color: #fff; font-size: .83rem; font-weight: 600;
+      cursor: pointer; transition: background .15s; white-space: nowrap;
+    }
+    .create-btn:hover { background: #4f46e5; }
+
+    /* ── Keys table ── */
+    .keys-table-wrap {
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px; overflow: hidden;
+    }
+    .keys-table-empty {
+      padding: 3rem; text-align: center; color: var(--muted); font-size: .875rem;
+    }
+    .key-row {
+      display: grid; grid-template-columns: 1fr auto auto auto; align-items: center;
+      gap: 1rem; padding: .9rem 1.25rem;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .key-row:last-child { border-bottom: none; }
+    .key-row-header {
+      background: rgba(255,255,255,.03); font-size: .72rem; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: .05em;
+    }
+    .key-name { font-size: .875rem; font-weight: 600; color: var(--text); }
+    .key-prefix { font-family: monospace; font-size: .78rem; color: var(--muted); margin-top: .2rem; }
+    .key-date { font-size: .78rem; color: var(--muted); white-space: nowrap; }
+    .key-actions { display: flex; gap: .4rem; }
+
+    .action-btn {
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .3rem .65rem; border-radius: 6px; border: 1px solid rgba(255,255,255,.1);
+      background: none; color: var(--muted); font-size: .75rem; cursor: pointer;
+      transition: all .12s; white-space: nowrap;
+    }
+    .action-btn:hover { background: rgba(255,255,255,.07); color: var(--text); }
+    .action-btn.danger:hover { border-color: #f87171; color: #f87171; background: rgba(239,68,68,.08); }
+    .action-btn.rotate:hover { border-color: #818cf8; color: #818cf8; background: rgba(99,102,241,.08); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65); z-index: 300;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #1a1d27; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 14px; padding: 1.75rem; width: 100%; max-width: 440px;
+    }
+    .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: .35rem; }
+    .modal p { font-size: .82rem; color: var(--muted); margin-bottom: 1.25rem; line-height: 1.5; }
+    .modal label { display: block; font-size: .78rem; color: var(--muted); margin-bottom: .4rem; }
+    .modal input[type="text"] {
+      width: 100%; padding: .65rem .9rem; background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+      color: var(--text); font-size: .875rem; outline: none; transition: border-color .15s;
+    }
+    .modal input[type="text"]:focus { border-color: rgba(99,102,241,.5); }
+    .modal-actions { display: flex; gap: .6rem; justify-content: flex-end; margin-top: 1.25rem; }
+    .cancel-btn {
+      padding: .55rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,.12);
+      background: none; color: var(--muted); font-size: .83rem; cursor: pointer;
+    }
+    .cancel-btn:hover { color: var(--text); }
+
+    /* ── Key reveal box ── */
+    .key-reveal {
+      background: rgba(34,197,94,.06); border: 1px solid rgba(34,197,94,.3);
+      border-radius: 10px; padding: 1.1rem 1.25rem; margin-top: 1rem;
+    }
+    .key-reveal p { font-size: .78rem; color: #86efac; margin-bottom: .65rem; line-height: 1.5; }
+    .key-reveal-value {
+      font-family: monospace; font-size: .82rem; color: #4ade80;
+      word-break: break-all; background: rgba(0,0,0,.25); border-radius: 6px;
+      padding: .6rem .85rem; margin-bottom: .65rem;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: #1a1d27; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 10px; padding: .7rem 1.1rem;
+      font-size: .82rem; transform: translateY(120px);
+      transition: transform .25s; z-index: 999;
+    }
+    .toast.show { transform: translateY(0); }
+    .toast.success { border-color: #22c55e; color: #4ade80; }
+    .toast.error   { border-color: #ef4444; color: #f87171; }
+
+    @media (max-width: 700px) { .sidebar { display: none; } }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<aside class="k-sidebar">
+  <a href="dashboard.html" class="k-sidebar-logo">Eior</a>
+  <nav class="k-sidebar-nav">
+    <a href="dashboard.html" class="k-nav-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+      Chat
+    </a>
+    <a href="models.html" class="k-nav-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+      Models
+    </a>
+    <a href="vps.html" class="k-nav-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
+        <line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+      </svg>
+      VPS
+    </a>
+    <a href="docs.html" class="k-nav-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/>
+      </svg>
+      API Docs
+    </a>
+    <a href="keys.html" class="k-nav-link active">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+      </svg>
+      API Keys
+    </a>
+    <a href="settings.html" class="k-nav-link">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+      Settings
+    </a>
+  </nav>
+  <div class="k-sidebar-footer">
+    <div class="k-sidebar-user">
+      <div class="k-user-avatar" id="userAvatar">?</div>
+      <span class="k-user-name" id="userNameSmall">Loading…</span>
+      <button onclick="signOut()" style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:.2rem;" title="Sign out">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<main class="main">
+  <header class="topbar">
+    <span class="topbar-title">API Keys</span>
+    <a href="dashboard.html" style="font-size:.78rem;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:.4rem;">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5"/><polyline points="12,19 5,12 12,5"/></svg>
+      Back to Chat
+    </a>
+  </header>
+
+  <div class="content">
+    <div class="content-inner">
+
+      <div class="section-header">
+        <div>
+          <h2>Your API Keys</h2>
+          <p>Use these keys to authenticate requests to the Eior API.</p>
+        </div>
+        <button class="create-btn" onclick="openCreateModal()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Create new key
+        </button>
+      </div>
+
+      <div class="keys-table-wrap" id="keysTable">
+        <div class="keys-table-empty">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto .75rem;display:block;color:var(--muted);">
+            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+          </svg>
+          Loading keys…
+        </div>
+      </div>
+
+      <p style="font-size:.75rem;color:var(--muted);margin-top:1rem;line-height:1.6;">
+        Keys are shown only once at creation time. Store them securely — we never show the full key again.<br>
+        Base URL: <code style="font-family:monospace;color:#818cf8;">https://api-production-2b12.up.railway.app/v1</code>
+      </p>
+
+    </div>
+  </div>
+</main>
+
+<!-- ── Create Key Modal ── -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal">
+    <h3>Create API Key</h3>
+    <p>Give your key a name to identify it (e.g. "Outfit App", "Production").</p>
+    <label for="keyName">Key name</label>
+    <input type="text" id="keyName" placeholder="My app" maxlength="100" />
+    <div id="newKeyReveal" style="display:none;" class="key-reveal">
+      <p>✓ Key created. Copy it now — it will never be shown again.</p>
+      <div class="key-reveal-value" id="newKeyValue"></div>
+      <button class="create-btn" style="width:100%;justify-content:center;" onclick="copyNewKey()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy key
+      </button>
+    </div>
+    <div class="modal-actions" id="createModalActions">
+      <button class="cancel-btn" onclick="closeCreateModal()">Cancel</button>
+      <button class="create-btn" id="createSubmitBtn" onclick="createKey()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Create key
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Rotate Key Modal ── -->
+<div class="modal-overlay" id="rotateModal">
+  <div class="modal">
+    <h3>Rotate API Key</h3>
+    <p>This will immediately invalidate your current key and generate a new one. Any apps using the old key will stop working.</p>
+    <div id="rotatedKeyReveal" style="display:none;" class="key-reveal">
+      <p>✓ New key generated. Copy it now — it will never be shown again.</p>
+      <div class="key-reveal-value" id="rotatedKeyValue"></div>
+      <button class="create-btn" style="width:100%;justify-content:center;" onclick="copyRotatedKey()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy key
+      </button>
+    </div>
+    <div class="modal-actions" id="rotateModalActions">
+      <button class="cancel-btn" onclick="closeRotateModal()">Cancel</button>
+      <button class="create-btn" style="background:#f59e0b;" id="rotateSubmitBtn" onclick="confirmRotate()">
+        Rotate key
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { initializeApp }       from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, onAuthStateChanged, signOut as fbSignOut }
+                                 from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+  const fbApp = initializeApp(window.FIREBASE_CONFIG);
+  const auth  = getAuth(fbApp);
+  const API   = window.API_BASE;
+
+  let currentUser = null;
+  let pendingRotateId = null;
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  onAuthStateChanged(auth, async user => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    currentUser = user;
+    const initials = (user.displayName ?? user.email ?? '?')[0].toUpperCase();
+    document.getElementById('userAvatar').textContent = initials;
+    document.getElementById('userNameSmall').textContent = user.displayName ?? user.email ?? '';
+    await loadKeys();
+  });
+
+  window.signOut = async () => {
+    await fbSignOut(auth);
+    window.location.href = 'index.html';
+  };
+
+  async function getToken() { return await currentUser.getIdToken(); }
+
+  async function apiFetch(path, opts = {}) {
+    const token = await getToken();
+    return fetch(API + path, {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(opts.headers ?? {}) },
+    });
+  }
+
+  // ── Load keys ─────────────────────────────────────────────────────────────
+  async function loadKeys() {
+    try {
+      const res  = await apiFetch('/v1/keys');
+      const data = await res.json();
+      renderKeys(data.keys ?? []);
+    } catch (e) {
+      document.getElementById('keysTable').innerHTML =
+        '<div class="keys-table-empty">Failed to load keys. Please refresh.</div>';
+    }
+  }
+
+  function renderKeys(keys) {
+    const wrap = document.getElementById('keysTable');
+    if (!keys.length) {
+      wrap.innerHTML = '<div class="keys-table-empty">No API keys yet. Create one to get started.</div>';
+      return;
+    }
+
+    wrap.innerHTML = `
+      <div class="key-row key-row-header">
+        <div>Name / Prefix</div>
+        <div>Created</div>
+        <div>Status</div>
+        <div>Actions</div>
+      </div>
+      ${keys.map(k => `
+        <div class="key-row">
+          <div>
+            <div class="key-name">${esc(k.name)}</div>
+            <div class="key-prefix">${esc(k.key_prefix ?? k.prefix ?? '')}••••••••••••••••</div>
+          </div>
+          <div class="key-date">${formatDate(k.created_at)}</div>
+          <div><span class="badge badge-green">Active</span></div>
+          <div class="key-actions">
+            <button class="action-btn rotate" onclick="openRotateModal('${k.id}')">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+              Rotate
+            </button>
+            <button class="action-btn danger" onclick="revokeKey('${k.id}', '${esc(k.name)}')">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/></svg>
+              Revoke
+            </button>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  // ── Create key ────────────────────────────────────────────────────────────
+  window.openCreateModal = function() {
+    document.getElementById('keyName').value = '';
+    document.getElementById('newKeyReveal').style.display = 'none';
+    document.getElementById('createModalActions').style.display = 'flex';
+    document.getElementById('createModal').classList.add('open');
+    setTimeout(() => document.getElementById('keyName').focus(), 100);
+  };
+
+  window.closeCreateModal = function() {
+    document.getElementById('createModal').classList.remove('open');
+    loadKeys();
+  };
+
+  window.createKey = async function() {
+    const name = document.getElementById('keyName').value.trim();
+    if (!name) { document.getElementById('keyName').focus(); return; }
+
+    const btn = document.getElementById('createSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Creating…';
+
+    try {
+      const res  = await apiFetch('/v1/keys', { method: 'POST', body: JSON.stringify({ name }) });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.error ?? 'Failed to create key', 'error');
+        btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Create key';
+        return;
+      }
+
+      // Show key reveal
+      document.getElementById('newKeyValue').textContent = data.key.key;
+      document.getElementById('newKeyReveal').style.display = 'block';
+      document.getElementById('createModalActions').innerHTML =
+        '<button class="cancel-btn" onclick="closeCreateModal()">Done</button>';
+    } catch (e) {
+      showToast('Network error', 'error');
+      btn.disabled = false;
+    }
+  };
+
+  window.copyNewKey = function() {
+    const val = document.getElementById('newKeyValue').textContent;
+    navigator.clipboard.writeText(val).then(() => showToast('Key copied!', 'success'));
+  };
+
+  // ── Rotate key ────────────────────────────────────────────────────────────
+  window.openRotateModal = function(id) {
+    pendingRotateId = id;
+    document.getElementById('rotatedKeyReveal').style.display = 'none';
+    document.getElementById('rotateModalActions').style.display = 'flex';
+    document.getElementById('rotateModal').classList.add('open');
+  };
+
+  window.closeRotateModal = function() {
+    document.getElementById('rotateModal').classList.remove('open');
+    pendingRotateId = null;
+    loadKeys();
+  };
+
+  window.confirmRotate = async function() {
+    if (!pendingRotateId) return;
+    const btn = document.getElementById('rotateSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Rotating…';
+
+    try {
+      const res  = await apiFetch(`/v1/keys/${pendingRotateId}/rotate`, { method: 'PUT' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.error ?? 'Failed to rotate key', 'error');
+        btn.disabled = false; btn.textContent = 'Rotate key';
+        return;
+      }
+
+      document.getElementById('rotatedKeyValue').textContent = data.key.key;
+      document.getElementById('rotatedKeyReveal').style.display = 'block';
+      document.getElementById('rotateModalActions').innerHTML =
+        '<button class="cancel-btn" onclick="closeRotateModal()">Done</button>';
+    } catch (e) {
+      showToast('Network error', 'error');
+      btn.disabled = false;
+    }
+  };
+
+  window.copyRotatedKey = function() {
+    const val = document.getElementById('rotatedKeyValue').textContent;
+    navigator.clipboard.writeText(val).then(() => showToast('Key copied!', 'success'));
+  };
+
+  // ── Revoke key ────────────────────────────────────────────────────────────
+  window.revokeKey = async function(id, name) {
+    if (!confirm(`Revoke key "${name}"? Any apps using it will stop working immediately.`)) return;
+    try {
+      const res = await apiFetch(`/v1/keys/${id}`, { method: 'DELETE' });
+      if (res.ok) { showToast('Key revoked', 'success'); await loadKeys(); }
+      else { const d = await res.json(); showToast(d.error ?? 'Failed to revoke', 'error'); }
+    } catch (e) { showToast('Network error', 'error'); }
+  };
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function formatDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // Close modals on overlay click
+  document.getElementById('createModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeCreateModal(); });
+  document.getElementById('rotateModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeRotateModal(); });
+
+  // Submit on Enter
+  document.getElementById('keyName').addEventListener('keydown', e => { if (e.key === 'Enter') createKey(); });
+</script>
+</body>
+</html>

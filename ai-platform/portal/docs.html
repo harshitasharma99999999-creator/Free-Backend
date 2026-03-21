@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Reference — Eior</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">Ei<span>or</span></a>
+  <div class="nav-links">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="docs.html" style="color:var(--text)">Docs</a>
+  </div>
+</nav>
+
+<div style="max-width:900px;margin:0 auto;padding:3rem 2rem">
+  <h1 style="font-size:2rem;font-weight:800;margin-bottom:.5rem">API Reference</h1>
+  <p style="color:var(--muted);margin-bottom:2rem">Base URL: <code>https://api-production-2b12.up.railway.app</code></p>
+
+  <!-- ── Official SDKs ── -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1rem">Official SDKs</h2>
+  <p style="color:var(--muted);font-size:.875rem;margin-bottom:1.25rem">Install the Eior SDK for your language — no <code>base_url</code> config needed, works out of the box.</p>
+
+  <!-- Tab switcher -->
+  <div style="display:flex;gap:.35rem;margin-bottom:0;border-bottom:1px solid var(--border);padding-bottom:0">
+    <button onclick="switchTab('py',this)" id="tab-py" style="background:none;border:none;border-bottom:2px solid var(--primary);color:var(--text);padding:.5rem 1.1rem;font-size:.875rem;font-weight:600;cursor:pointer;margin-bottom:-1px">Python</button>
+    <button onclick="switchTab('node',this)" id="tab-node" style="background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);padding:.5rem 1.1rem;font-size:.875rem;font-weight:600;cursor:pointer;margin-bottom:-1px">Node.js</button>
+    <button onclick="switchTab('curl',this)" id="tab-curl" style="background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);padding:.5rem 1.1rem;font-size:.875rem;font-weight:600;cursor:pointer;margin-bottom:-1px">curl</button>
+    <button onclick="switchTab('openai',this)" id="tab-openai" style="background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);padding:.5rem 1.1rem;font-size:.875rem;font-weight:600;cursor:pointer;margin-bottom:-1px">OpenAI SDK</button>
+  </div>
+
+  <!-- Python tab -->
+  <div id="sdk-py" style="background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:1.5rem;margin-bottom:2rem">
+    <p style="color:var(--muted);font-size:.8rem;font-weight:600;margin-bottom:.5rem">Step 1 — Install</p>
+    <pre><code>pip install eior</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;font-weight:600;margin:.75rem 0 .5rem">Step 2 — Get your API key from the <a href="dashboard.html" style="color:var(--primary-h)">dashboard</a></p>
+    <p style="color:var(--muted);font-size:.8rem;font-weight:600;margin:.75rem 0 .5rem">Step 3 — Use it</p>
+    <pre><code>from eior import Eior
+
+client = Eior(api_key="sk-your-key")
+
+# Chat
+response = client.chat.completions.create(
+    model="eior-chat",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+print(response.choices[0].message.content)
+
+# Streaming
+stream = client.chat.completions.create(
+    model="eior-chat",
+    messages=[{"role": "user", "content": "Count to 10"}],
+    stream=True,
+)
+for chunk in stream:
+    print(chunk.choices[0].delta.content or "", end="", flush=True)
+
+# Async
+from eior import AsyncEior
+import asyncio
+
+async def main():
+    client = AsyncEior(api_key="sk-your-key")
+    res = await client.chat.completions.create(
+        model="eior-chat",
+        messages=[{"role": "user", "content": "Hello!"}],
+    )
+    print(res.choices[0].message.content)
+
+asyncio.run(main())
+
+# Vision (photo analysis — e.g. outfit checker)
+response = client.chat.completions.create(
+    model="eior-vision",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What outfit would suit this person?"},
+            {"type": "image_url", "image_url": {"url": "https://example.com/photo.jpg"}}
+        ]
+    }],
+)
+print(response.choices[0].message.content)</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <!-- Node.js tab -->
+  <div id="sdk-node" style="display:none;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:1.5rem;margin-bottom:2rem">
+    <p style="color:var(--muted);font-size:.8rem;font-weight:600;margin-bottom:.5rem">Step 1 — Install</p>
+    <pre><code>npm install eior</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;font-weight:600;margin:.75rem 0 .5rem">Step 2 — Get your API key from the <a href="dashboard.html" style="color:var(--primary-h)">dashboard</a></p>
+    <p style="color:var(--muted);font-size:.8rem;font-weight:600;margin:.75rem 0 .5rem">Step 3 — Use it</p>
+    <pre><code>import Eior from 'eior';
+
+const client = new Eior({ apiKey: 'sk-your-key' });
+
+// Chat
+const response = await client.chat.completions.create({
+  model:    'eior-chat',
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+console.log(response.choices[0].message.content);
+
+// Streaming
+const stream = await client.chat.completions.create({
+  model:    'eior-chat',
+  messages: [{ role: 'user', content: 'Count to 10' }],
+  stream:   true,
+});
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? '');
+}
+
+// Vision (photo analysis)
+const res = await client.chat.completions.create({
+  model: 'eior-vision',
+  messages: [{
+    role: 'user',
+    content: [
+      { type: 'text',      text: 'Describe this image' },
+      { type: 'image_url', image_url: { url: 'https://example.com/photo.jpg' } },
+    ],
+  }],
+});
+console.log(res.choices[0].message.content);</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.75rem;margin-top:.75rem">TypeScript types are included — no <code>@types</code> package needed.</p>
+  </div>
+
+  <!-- curl tab -->
+  <div id="sdk-curl" style="display:none;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:1.5rem;margin-bottom:2rem">
+    <p style="color:var(--muted);font-size:.8rem;font-weight:600;margin-bottom:.5rem">No install needed — works in any terminal</p>
+    <pre>curl https://api-production-2b12.up.railway.app/v1/chat/completions \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "eior-chat",
+    "messages": [{"role":"user","content":"Hello!"}]
+  }'<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;font-weight:600;margin:.75rem 0 .5rem">Streaming</p>
+    <pre>curl https://api-production-2b12.up.railway.app/v1/chat/completions \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "eior-chat",
+    "messages": [{"role":"user","content":"Count to 5"}],
+    "stream": true
+  }'<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <!-- OpenAI SDK tab -->
+  <div id="sdk-openai" style="display:none;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:1.5rem;margin-bottom:2rem">
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Already using the OpenAI SDK? Just change <code>base_url</code> — nothing else.</p>
+    <p style="color:var(--muted);font-size:.8rem;font-weight:600;margin-bottom:.5rem">Python</p>
+    <pre><code>pip install openai
+
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-your-key",
+    base_url="https://api-production-2b12.up.railway.app/v1",
+)
+response = client.chat.completions.create(
+    model="eior-chat",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+print(response.choices[0].message.content)</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;font-weight:600;margin:.75rem 0 .5rem">Node.js</p>
+    <pre><code>npm install openai
+
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey:  'sk-your-key',
+  baseURL: 'https://api-production-2b12.up.railway.app/v1',
+});
+const res = await client.chat.completions.create({
+  model:    'eior-chat',
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+console.log(res.choices[0].message.content);</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <!-- Models table -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1rem">Available Models</h2>
+  <table style="margin-bottom:2.5rem">
+    <thead><tr><th>Model ID</th><th>Best For</th><th>Speed</th></tr></thead>
+    <tbody>
+      <tr><td><code>eior-chat</code></td><td>General chat, reasoning, writing</td><td>Fast</td></tr>
+      <tr><td><code>eior-fast</code></td><td>Quick responses, simple tasks</td><td>Fastest</td></tr>
+      <tr><td><code>eior-vision</code></td><td>Photo analysis, image understanding</td><td>Medium</td></tr>
+      <tr><td><code>eior-code</code></td><td>Code generation, debugging</td><td>Fast</td></tr>
+    </tbody>
+  </table>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Eior SDK Drop-in -->
+  <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.3);border-radius:10px;padding:1.5rem;margin-bottom:3rem">
+    <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:.75rem;color:var(--primary-h)">Works with any OpenAI-compatible tool</h2>
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Eior works in <strong>LangChain, LlamaIndex, AutoGen, Open WebUI, Continue.dev, Cursor</strong> — anywhere that accepts a custom OpenAI base URL.</p>
+    <pre><code># LangChain example
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(
+    api_key="sk-your-key",
+    base_url="https://api-production-2b12.up.railway.app/v1",
+    model="eior-chat",
+)
+print(llm.invoke("Hello!"))</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <!-- Authentication -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:.75rem">Authentication</h2>
+  <p style="color:var(--muted);font-size:.9rem;margin-bottom:1rem">All generation endpoints require an API key in the <code>Authorization</code> header.</p>
+  <pre>Authorization: Bearer sk-your-api-key<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Chat -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem">Chat Completions</h2>
+
+  <div class="endpoint-block">
+    <h3><span class="method-badge method-post">POST</span>/v1/chat/completions</h3>
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Generate a chat response using Eior's AI model. OpenAI-compatible format.</p>
+    <pre><code>{
+  "model": "eior-chat",       // optional
+  "messages": [
+    { "role": "system",    "content": "You are a helpful assistant." },
+    { "role": "user",      "content": "What is the capital of France?" }
+  ]
+}</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Example:</p>
+    <pre>curl https://api-production-2b12.up.railway.app/v1/chat/completions \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [{"role":"user","content":"Say hello in French"}]
+  }'<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Response:</p>
+    <pre><code>{
+  "id": "chatcmpl-1234567890",
+  "object": "chat.completion",
+  "model": "eior-chat",
+  "choices": [{
+    "message": { "role": "assistant", "content": "Bonjour!" },
+    "finish_reason": "stop"
+  }],
+  "usage": { "prompt_tokens": 5, "completion_tokens": 3, "total_tokens": 8 }
+}</code></pre>
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Image -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem">Image Generation</h2>
+
+  <div class="endpoint-block">
+    <h3><span class="method-badge method-post">POST</span>/v1/images/generations</h3>
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Generate images from a text prompt using Eior's image model.</p>
+    <pre><code>{
+  "prompt":          "A futuristic city at sunset, photorealistic",
+  "negative_prompt": "blurry, low quality",  // optional
+  "n":    1,          // 1–4, default 1
+  "size": "1024x1024" // 512x512 | 1024x1024 | 1024x1792 | 1792x1024
+}</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Example:</p>
+    <pre>curl https://api-production-2b12.up.railway.app/v1/images/generations \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"A golden retriever on a beach","n":1,"size":"1024x1024"}'<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Response:</p>
+    <pre><code>{
+  "created": 1718000000,
+  "data": [{ "url": "https://replicate.delivery/...image.png" }],
+  "model": "stability-ai/sdxl"
+}</code></pre>
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Video -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem">Video Generation</h2>
+
+  <div class="endpoint-block">
+    <h3><span class="method-badge method-post">POST</span>/v1/video/generate</h3>
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Generate a short video clip from a text prompt using Eior's video model. <strong>Takes 1–5 minutes.</strong></p>
+    <pre><code>{
+  "prompt":   "A timelapse of clouds over snow mountains, cinematic",
+  "duration": 5   // seconds, 1–10, default 5
+}</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Example:</p>
+    <pre>curl https://api-production-2b12.up.railway.app/v1/video/generate \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"A cat playing piano","duration":4}'<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Response:</p>
+    <pre><code>{
+  "video_url": "https://replicate.delivery/...video.mp4",
+  "prompt": "A cat playing piano",
+  "status": "completed",
+  "model": "wan-ai/wan2.1-t2v-480p"
+}</code></pre>
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Tool calling / Function calling -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem">Function Calling &amp; Tool Use</h2>
+  <div class="endpoint-block">
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Attach functions as tools so the model can call them. Works exactly like OpenAI's tool-use format.</p>
+    <pre><code>{
+  "model": "eior-chat",
+  "messages": [{"role":"user","content":"What is the weather in London?"}],
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "get_weather",
+      "description": "Get the current weather for a city",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": { "type": "string", "description": "City name" },
+          "unit":     { "type": "string", "enum": ["celsius","fahrenheit"] }
+        },
+        "required": ["location"]
+      }
+    }
+  }],
+  "tool_choice": "auto"
+}</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Response when tool is called:</p>
+    <pre><code>{
+  "choices": [{
+    "finish_reason": "tool_calls",
+    "message": {
+      "role": "assistant",
+      "content": null,
+      "tool_calls": [{
+        "id": "call_abc123",
+        "type": "function",
+        "function": { "name": "get_weather", "arguments": "{\"location\":\"London\"}" }
+      }]
+    }
+  }]
+}</code></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Python with tool use:</p>
+    <pre><code>from eior import Eior
+
+client = Eior(api_key="sk-your-key")
+
+response = client.chat.completions.create(
+    model="eior-chat",
+    messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+    tools=[{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get weather for a city",
+            "parameters": {
+                "type": "object",
+                "properties": { "location": {"type": "string"} },
+                "required": ["location"]
+            }
+        }
+    }],
+    tool_choice="auto",
+)
+
+if response.choices[0].finish_reason == "tool_calls":
+    tool_call = response.choices[0].message.tool_calls[0]
+    print(f"Model wants to call: {tool_call.function.name}")
+    print(f"With args: {tool_call.function.arguments}")</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Embeddings -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem">Embeddings</h2>
+  <div class="endpoint-block">
+    <h3><span class="method-badge method-post">POST</span>/v1/embeddings</h3>
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Generate vector embeddings for text — for semantic search, RAG, and similarity tasks.</p>
+    <pre><code>{
+  "input": "The quick brown fox jumps",  // string or array of strings
+  "model": "eior-embed"                 // optional
+}</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <pre>curl https://api-production-2b12.up.railway.app/v1/embeddings \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"input":["Hello world","How are you"],"model":"eior-embed"}'<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Response:</p>
+    <pre><code>{
+  "object": "list",
+  "model": "eior-embed",
+  "data": [
+    { "object": "embedding", "index": 0, "embedding": [0.023, -0.051, ...] },
+    { "object": "embedding", "index": 1, "embedding": [0.018,  0.042, ...] }
+  ],
+  "usage": { "prompt_tokens": 6, "total_tokens": 6 }
+}</code></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Python:</p>
+    <pre><code>from eior import Eior
+
+client = Eior(api_key="sk-your-key")
+
+result = client.embeddings.create(
+    model="eior-embed",
+    input=["Semantic search query", "Document text here"],
+)
+
+for item in result.data:
+    print(f"Vector length: {len(item.embedding)}")</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Audio -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem">Audio</h2>
+
+  <div class="endpoint-block" style="margin-bottom:1.5rem">
+    <h3><span class="method-badge method-post">POST</span>/v1/audio/speech &nbsp;<small style="color:var(--muted);font-weight:400;font-size:.8rem">Text-to-Speech</small></h3>
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Convert text to natural-sounding speech. Returns an audio file (MP3).</p>
+    <pre><code>{
+  "input": "Hello! Welcome to Eior, your AI platform.",
+  "voice": "alloy",   // alloy | echo | fable | onyx | nova | shimmer
+  "model": "eior-tts" // optional
+}</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <pre>curl https://api-production-2b12.up.railway.app/v1/audio/speech \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"input":"Hello world","voice":"nova"}' \
+  --output speech.mp3<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Python:</p>
+    <pre><code>from eior import Eior
+
+client = Eior(api_key="sk-your-key")
+
+with client.audio.speech.with_streaming_response.create(
+    model="eior-tts",
+    voice="nova",
+    input="The rain in Spain stays mainly in the plain.",
+) as res:
+    res.stream_to_file("output.mp3")</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="endpoint-block" style="margin-bottom:1.5rem">
+    <h3><span class="method-badge method-post">POST</span>/v1/audio/transcriptions &nbsp;<small style="color:var(--muted);font-weight:400;font-size:.8rem">Speech-to-Text (Whisper)</small></h3>
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Transcribe audio to text using Whisper. Accepts multipart/form-data <code>file</code> upload.</p>
+    <pre>curl https://api-production-2b12.up.railway.app/v1/audio/transcriptions \
+  -H "Authorization: Bearer sk-your-key" \
+  -F "file=@audio.mp3" \
+  -F "model=whisper-1"<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <p style="color:var(--muted);font-size:.8rem;margin:.75rem 0 .5rem">Python:</p>
+    <pre><code>from eior import Eior
+
+client = Eior(api_key="sk-your-key")
+
+with open("audio.mp3", "rb") as f:
+    result = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=f,
+    )
+print(result.text)</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <div class="endpoint-block">
+    <h3><span class="method-badge method-post">POST</span>/v1/audio/translations &nbsp;<small style="color:var(--muted);font-weight:400;font-size:.8rem">Audio → English Text</small></h3>
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Translate audio in any language to English text.</p>
+    <pre>curl https://api-production-2b12.up.railway.app/v1/audio/translations \
+  -H "Authorization: Bearer sk-your-key" \
+  -F "file=@spanish_audio.mp3"<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Moderation -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem">Moderation</h2>
+  <div class="endpoint-block">
+    <h3><span class="method-badge method-post">POST</span>/v1/moderations</h3>
+    <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Check if text content violates content policies. Returns category scores.</p>
+    <pre><code>{
+  "input": "Your text to check"  // string or array of strings
+}</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <pre><code>from eior import Eior
+
+client = Eior(api_key="sk-your-key")
+result = client.moderations.create(input="Some text to check")
+print(result.results[0].flagged)       # True/False
+print(result.results[0].categories)   # per-category flags</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Files -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem">Files API</h2>
+  <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">Upload and manage files for use with Assistants and other features.</p>
+
+  <div class="endpoint-block" style="margin-bottom:1rem">
+    <h3><span class="method-badge method-post">POST</span>/v1/files</h3>
+    <pre>curl https://api-production-2b12.up.railway.app/v1/files \
+  -H "Authorization: Bearer sk-your-key" \
+  -F "file=@document.txt" \
+  -F "purpose=assistants"<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:2rem">
+    <div class="endpoint-block" style="flex:1;min-width:200px">
+      <h3><span class="method-badge method-get">GET</span>/v1/files</h3>
+      <p style="color:var(--muted);font-size:.8rem">List all uploaded files</p>
+    </div>
+    <div class="endpoint-block" style="flex:1;min-width:200px">
+      <h3><span class="method-badge method-get">GET</span>/v1/files/:id</h3>
+      <p style="color:var(--muted);font-size:.8rem">Get file metadata</p>
+    </div>
+    <div class="endpoint-block" style="flex:1;min-width:200px">
+      <h3><span class="method-badge method-get">GET</span>/v1/files/:id/content</h3>
+      <p style="color:var(--muted);font-size:.8rem">Download file content</p>
+    </div>
+    <div class="endpoint-block" style="flex:1;min-width:200px">
+      <h3><span class="method-badge method-delete">DELETE</span>/v1/files/:id</h3>
+      <p style="color:var(--muted);font-size:.8rem">Delete a file</p>
+    </div>
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Assistants API -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:.5rem">Assistants API</h2>
+  <p style="color:var(--muted);font-size:.875rem;margin-bottom:1.5rem">Build powerful AI agents with persistent memory and tool use. Create an assistant, attach it to a thread, run it.</p>
+
+  <div class="endpoint-block" style="margin-bottom:1rem">
+    <h3>Assistants</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:.8rem">
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#22c55e">POST</span>  /v1/assistants</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#3b82f6">GET</span>   /v1/assistants</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#3b82f6">GET</span>   /v1/assistants/:id</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#22c55e">POST</span>  /v1/assistants/:id &nbsp;(update)</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#ef4444">DELETE</span> /v1/assistants/:id</code>
+    </div>
+  </div>
+
+  <div class="endpoint-block" style="margin-bottom:1rem">
+    <h3>Threads &amp; Messages</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:.8rem">
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#22c55e">POST</span>  /v1/threads</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#3b82f6">GET</span>   /v1/threads/:id</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#ef4444">DELETE</span> /v1/threads/:id</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#22c55e">POST</span>  /v1/threads/:id/messages</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#3b82f6">GET</span>   /v1/threads/:id/messages</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#3b82f6">GET</span>   /v1/threads/:id/messages/:msg_id</code>
+    </div>
+  </div>
+
+  <div class="endpoint-block" style="margin-bottom:2rem">
+    <h3>Runs</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:.8rem">
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#22c55e">POST</span>  /v1/threads/:id/runs</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#3b82f6">GET</span>   /v1/threads/:id/runs</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#3b82f6">GET</span>   /v1/threads/:id/runs/:run_id</code>
+      <code style="background:var(--bg);padding:.4rem .7rem;border-radius:6px"><span style="color:#22c55e">POST</span>  /v1/threads/:id/runs/:run_id/cancel</code>
+    </div>
+  </div>
+
+  <p style="color:var(--muted);font-size:.8rem;font-weight:600;margin-bottom:.5rem">Full example (Python):</p>
+  <pre><code>from eior import Eior
+
+client = Eior(api_key="sk-your-key")
+
+# 1. Create an assistant
+assistant = client.beta.assistants.create(
+    name="Eior Helper",
+    instructions="You are a helpful AI assistant.",
+    model="eior-chat",
+)
+
+# 2. Create a thread
+thread = client.beta.threads.create()
+
+# 3. Add a message to the thread
+client.beta.threads.messages.create(
+    thread_id=thread.id,
+    role="user",
+    content="Explain quantum computing in simple terms.",
+)
+
+# 4. Run the assistant
+run = client.beta.threads.runs.create_and_poll(
+    thread_id=thread.id,
+    assistant_id=assistant.id,
+)
+
+# 5. Get the response
+if run.status == "completed":
+    messages = client.beta.threads.messages.list(thread_id=thread.id)
+    for msg in messages.data:
+        print(f"{msg.role}: {msg.content[0].text.value}")</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Models -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem">List Models</h2>
+  <div class="endpoint-block">
+    <h3><span class="method-badge method-get">GET</span>/v1/models</h3>
+    <pre>curl https://api-production-2b12.up.railway.app/v1/models \
+  -H "Authorization: Bearer sk-your-key"<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+  </div>
+
+  <!-- Health -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem">Health Check</h2>
+  <div class="endpoint-block">
+    <h3><span class="method-badge method-get">GET</span>/health</h3>
+    <pre>curl https://api-production-2b12.up.railway.app/health<button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+    <pre><code>{ "status": "ok", "version": "1.0.0", "timestamp": "2024-01-01T00:00:00.000Z" }</code></pre>
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+
+  <!-- Error reference -->
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1rem">Error Format</h2>
+  <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">All errors return a consistent JSON envelope:</p>
+  <pre><code>{
+  "error": "Human-readable message",
+  "code":  "MACHINE_READABLE_CODE"
+}</code></pre>
+
+  <table style="margin-top:1rem">
+    <thead><tr><th>Status</th><th>Code</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>401</td><td><code>INVALID_API_KEY</code></td><td>API key is invalid or revoked</td></tr>
+      <tr><td>401</td><td><code>INVALID_TOKEN</code></td><td>Firebase ID token is invalid/expired</td></tr>
+      <tr><td>400</td><td><code>VALIDATION_ERROR</code></td><td>Request body failed validation</td></tr>
+      <tr><td>429</td><td><code>RATE_LIMIT_EXCEEDED</code></td><td>60 req/min limit reached — check <code>Retry-After</code></td></tr>
+      <tr><td>502</td><td><code>AI_SERVICE_ERROR</code></td><td>Upstream AI provider unavailable</td></tr>
+    </tbody>
+  </table>
+
+  <!-- JS SDK -->
+  <hr style="border:none;border-top:1px solid var(--border);margin:2.5rem 0" />
+  <h2 style="font-size:1.3rem;font-weight:700;margin-bottom:1rem">JavaScript Example</h2>
+  <pre><code>const API_KEY = 'sk-your-key';
+const BASE    = 'https://api-production-2b12.up.railway.app';
+
+// Chat
+const chat = await fetch(`${BASE}/v1/chat/completions`, {
+  method:  'POST',
+  headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+  body:    JSON.stringify({
+    messages: [{ role: 'user', content: 'Explain black holes in 2 sentences.' }]
+  }),
+}).then(r => r.json());
+
+console.log(chat.choices[0].message.content);
+
+// Image
+const img = await fetch(`${BASE}/v1/images/generations`, {
+  method:  'POST',
+  headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+  body:    JSON.stringify({ prompt: 'A neon city at night', n: 1, size: '1024x1024' }),
+}).then(r => r.json());
+
+console.log(img.data[0].url);</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>
+
+</div>
+
+<script>
+function switchTab(name, btn) {
+  ['py','node','curl','openai'].forEach(t => {
+    document.getElementById('sdk-' + t).style.display = t === name ? 'block' : 'none';
+    const tb = document.getElementById('tab-' + t);
+    tb.style.borderBottomColor = t === name ? 'var(--primary)' : 'transparent';
+    tb.style.color = t === name ? 'var(--text)' : 'var(--muted)';
+  });
+}
+
+function copyCode(btn) {
+  const code = btn.closest('pre').textContent.replace('Copy','').trim();
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+</script>
+</body>
+</html>

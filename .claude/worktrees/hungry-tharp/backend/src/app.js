@@ -1,0 +1,103 @@
+import Fastify from 'fastify';
+import helmet from '@fastify/helmet';
+import cors from '@fastify/cors';
+import { config } from './config.js';
+import dbPlugin from './db/index.js';
+import authPlugin from './plugins/auth.js';
+import passwordPlugin from './plugins/password.js';
+import authRoutes from './routes/auth.js';
+import apiKeysRoutes from './routes/apiKeys.js';
+import usageRoutes from './routes/usage.js';
+import publicApiRoutes from './routes/publicApi.js';
+import generateRoutes from './routes/generate.js';
+import paymentRoutes from './routes/payments.js';
+
+export async function buildApp() {
+  const fastify = Fastify({
+    logger: config.env !== 'production',
+    // Disable request timeout for serverless (Vercel manages its own)
+    requestTimeout: 0,
+  });
+
+  await fastify.register(helmet, {
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  });
+
+  await fastify.register(cors, {
+    origin: config.cors.origins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+  });
+
+  // Database — if this fails the app still starts; routes will return 500
+  await fastify.register(dbPlugin);
+  await fastify.register(passwordPlugin);
+  await fastify.register(authPlugin);
+
+  await fastify.register(authRoutes, { prefix: '/api/auth' });
+  await fastify.register(apiKeysRoutes, { prefix: '/api/keys' });
+  await fastify.register(usageRoutes, { prefix: '/api/usage' });
+  await fastify.register(publicApiRoutes, { prefix: '/api/public' });
+  await fastify.register(generateRoutes, { prefix: '/api/public' });
+  await fastify.register(paymentRoutes, { prefix: '/api/payments' });
+
+  // Root health-check endpoint (no DB needed)
+  fastify.get('/api', (_, reply) => {
+    reply.send({
+      name: 'Free API',
+      version: '1.0',
+      status: 'running',
+    });
+  });
+
+  // Diagnostic endpoint — remove after debugging
+  fastify.get('/api/debug/health', async (_, reply) => {
+    const checks = {};
+    // DB check
+    try {
+      const db = fastify.mongo?.db;
+      if (db) {
+        await db.command({ ping: 1 });
+        checks.mongodb = 'connected';
+      } else {
+        checks.mongodb = 'no db object';
+      }
+    } catch (err) {
+      checks.mongodb = `error: ${err.message}`;
+    }
+    // Firebase Admin check
+    try {
+      const { getFirebaseAdmin } = await import('./lib/firebaseAdmin.js');
+      const app = getFirebaseAdmin();
+      checks.firebase = app ? 'initialised' : 'null';
+    } catch (err) {
+      checks.firebase = `error: ${err.message}`;
+    }
+    // Env check (show presence, not values)
+    checks.env = {
+      MONGODB_URI: !!process.env.MONGODB_URI,
+      JWT_SECRET: !!process.env.JWT_SECRET,
+      CORS_ORIGINS: process.env.CORS_ORIGINS || '(not set)',
+      FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '(not set)',
+      FIREBASE_CLIENT_EMAIL: !!process.env.FIREBASE_CLIENT_EMAIL,
+      FIREBASE_PRIVATE_KEY: !!process.env.FIREBASE_PRIVATE_KEY,
+      FIREBASE_PRIVATE_KEY_LENGTH: (process.env.FIREBASE_PRIVATE_KEY || '').length,
+    };
+    reply.send(checks);
+  });
+
+  // Index creation in background — never crash the app
+  try {
+    fastify.ensureIndexes().catch((err) => {
+      console.warn('ensureIndexes failed (non-fatal):', err.message);
+    });
+  } catch (_) {
+    // ensureIndexes may not exist if db registration failed
+  }
+
+  // Make sure Fastify is fully ready
+  await fastify.ready();
+  return fastify;
+}

@@ -1,0 +1,96 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Backend API Calls Succeed
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bug exists
+  - **Scoped PBT Approach**: Scope the property to concrete failing cases - backend requests with valid API keys to public endpoints
+  - Test that backend HTTP requests (without Origin headers) to `/api/public/v1/*` or `/api/developer/v1/*` endpoints with valid API keys in `X-API-Key` header or `Authorization: Bearer` header successfully authenticate and process
+  - Test cases to include:
+    - Backend cURL simulation: Request with `X-API-Key: fk_test...` header, no Origin header
+    - Backend Node.js fetch simulation: Request with `X-API-Key` header, no Origin header
+    - Authorization Bearer format: Request with `Authorization: Bearer fk_test...` header
+    - Python requests simulation: Request with API key header, no Origin header
+  - The test assertions should verify successful authentication (200 OK responses, not CORS errors or 401)
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found (e.g., "CORS error when valid API key provided", "401 authentication failure with Authorization Bearer format")
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Frontend Authentication Unchanged
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for non-buggy inputs (browser requests, JWT authentication)
+  - Write property-based tests capturing observed behavior patterns:
+    - Browser CORS behavior: Requests from allowed origins with Origin header work correctly
+    - JWT authentication: `/api/auth/*`, `/api/keys/*`, `/api/usage/*` endpoints require JWT tokens
+    - Frontend API key usage: Browser requests with API keys from allowed origins work
+    - Rate limiting: 100 requests per 60 seconds enforcement continues to apply
+    - Health check: `/api` endpoint works without authentication
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
+
+- [ ] 3. Fix for API external integration
+
+  - [x] 3.1 Implement conditional CORS application in backend/src/app.js
+    - Modify CORS registration in `buildApp` function to only apply to browser requests
+    - Add origin validation function that returns `false` for requests without Origin header (server requests)
+    - Update CORS options with `origin: (origin, callback) => { ... }` function to conditionally apply CORS
+    - Allow requests with no Origin header (server-to-server communication)
+    - Maintain existing allowed origins for browser requests
+    - _Bug_Condition: isBugCondition(input) where input.origin IS "backend-application" AND input.endpoint MATCHES "/api/public/v1/*" OR "/api/developer/v1/*" AND input.headers CONTAINS "X-API-Key" OR "Authorization: Bearer <api_key>"_
+    - _Expected_Behavior: Backend requests with valid API keys successfully authenticate and process without CORS errors_
+    - _Preservation: Browser requests from allowed origins continue to work with CORS, JWT authentication unchanged, rate limiting preserved_
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
+
+  - [x] 3.2 Implement unified API key extraction in backend/src/routes/publicApi.js
+    - Update `preHandler` hook to support multiple API key header formats
+    - Check `X-API-Key` header first (primary method)
+    - Fall back to `Authorization: Bearer <api_key>` format (extract key after "Bearer ")
+    - Fall back to `apiKey` query parameter (least preferred)
+    - Validate API key format (`fk_<32-char-nanoid>`) regardless of source
+    - Provide clear error messages distinguishing between missing key, invalid format, and invalid/revoked key
+    - Include helpful hints about which headers to use in error responses
+    - _Bug_Condition: isBugCondition(input) where authentication header format may vary_
+    - _Expected_Behavior: API keys are successfully extracted and validated from any supported format_
+    - _Preservation: Existing X-API-Key and query parameter authentication continues to work_
+    - _Requirements: 2.2, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.3_
+
+  - [ ] 3.3 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Backend API Calls Succeed
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - Verify all backend request scenarios now succeed:
+      - X-API-Key header format works
+      - Authorization Bearer format works
+      - Requests without Origin header are processed
+      - No CORS errors for server-to-server requests
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
+
+  - [ ] 3.4 Verify preservation tests still pass
+    - **Property 2: Preservation** - Frontend Authentication Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all preservation scenarios still work:
+      - Browser CORS behavior unchanged
+      - JWT authentication for protected endpoints unchanged
+      - Frontend API key usage unchanged
+      - Rate limiting still enforced
+      - Health check endpoint still works
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
+
+- [ ] 4. Checkpoint - Ensure all tests pass
+  - Run full test suite to verify both bug fix and preservation
+  - Verify no regressions in existing functionality
+  - Confirm backend-to-backend API calls now work correctly
+  - Ask the user if questions arise

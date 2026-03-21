@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VPS — Eior</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .dash-layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 230px; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      background: var(--surface); border-right: 1px solid var(--border);
+      position: sticky; top: 0; height: 100vh; overflow: hidden;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: .5rem;
+      padding: 1.5rem 1.25rem 1.25rem;
+      font-size: 1.15rem; font-weight: 800;
+      color: var(--text); text-decoration: none;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .sidebar-logo span { color: var(--primary-h); }
+    .sidebar-logo svg { color: var(--primary-h); }
+    .sidebar-nav { display: flex; flex-direction: column; padding: .75rem .75rem 0; gap: .15rem; flex: 1; }
+    .sidebar-nav a {
+      display: flex; align-items: center; gap: .7rem;
+      padding: .6rem .9rem; border-radius: 8px;
+      color: var(--muted); font-size: .875rem; font-weight: 500;
+      text-decoration: none; transition: background .15s, color .15s; white-space: nowrap;
+    }
+    .sidebar-nav a svg { flex-shrink: 0; opacity: .75; }
+    .sidebar-nav a:hover { background: rgba(255,255,255,.055); color: var(--text); }
+    .sidebar-nav a:hover svg { opacity: 1; }
+    .sidebar-nav a.active { background: rgba(99,102,241,.15); color: #a5b4fc; font-weight: 600; }
+    .sidebar-nav a.active svg { opacity: 1; color: #a5b4fc; }
+    .sidebar-footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 1rem 1.25rem; }
+    .sidebar-user { display: flex; align-items: center; gap: .65rem; margin-bottom: .75rem; }
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--primary); display: flex; align-items: center;
+      justify-content: center; font-size: .8rem; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .sidebar-user-info { min-width: 0; }
+    .user-name { font-size: .8rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-label { font-size: .7rem; color: var(--muted); }
+    .main-content { flex: 1; padding: 2rem 2.5rem; overflow-y: auto; }
+
+    /* VPS cards */
+    .vps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .vps-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem;
+    }
+    .vps-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+    .vps-name { font-weight: 700; font-size: .95rem; }
+    .vps-meta { font-size: .78rem; color: var(--muted); margin-bottom: .85rem; display: flex; flex-direction: column; gap: .2rem; }
+    .vps-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+    /* Plans */
+    .plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }
+    .plan-card {
+      border: 2px solid var(--border); border-radius: 10px;
+      padding: 1rem; cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .plan-card:hover { border-color: var(--primary); background: rgba(99,102,241,.06); }
+    .plan-card.selected { border-color: var(--primary); background: rgba(99,102,241,.1); }
+    .plan-name { font-weight: 700; font-size: .95rem; margin-bottom: .3rem; }
+    .plan-price { font-size: .8rem; color: var(--primary-h); font-weight: 600; margin-bottom: .5rem; }
+    .plan-spec { font-size: .78rem; color: var(--muted); }
+
+    .empty-state { text-align: center; padding: 3rem; color: var(--muted); }
+    .empty-state svg { opacity: .3; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+<div class="dash-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <a class="sidebar-logo" href="/">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+      Ei<span>or</span>
+    </a>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Workbench
+      </a>
+      <a href="models.html">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+        </svg>
+        Models
+      </a>
+      <a href="vps.html" class="active">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
+          <line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+        </svg>
+        VPS
+      </a>
+      <a href="docs.html">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        Docs
+      </a>
+      <a href="settings.html">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        Settings
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="user-name" id="userEmail">Loading…</div>
+          <div class="user-label">Free plan</div>
+        </div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="signOut()" style="width:100%">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Sign out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <h1>VPS Instances</h1>
+        <p>Cloud servers powered by <strong>Hetzner Cloud</strong> — deploy in seconds</p>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openOrderModal()" id="orderBtn" style="display:none">
+        + New Server
+      </button>
+    </div>
+
+    <!-- Loading state -->
+    <div id="vpsLoading" style="color:var(--muted);padding:1rem 0;font-size:.9rem">Loading…</div>
+
+    <!-- VPS grid -->
+    <div class="vps-grid" id="vpsGrid"></div>
+  </main>
+</div>
+
+<!-- Order modal -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal" style="max-width:520px">
+    <h2>Order a VPS</h2>
+    <div class="form-group">
+      <label>Hostname</label>
+      <input type="text" id="vpsName" placeholder="my-server" />
+      <div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">Letters, numbers and dashes only</div>
+    </div>
+    <div class="form-group">
+      <label>Plan</label>
+      <div class="plans-grid">
+        <div class="plan-card selected" onclick="selectPlan('starter', this)">
+          <div class="plan-name">Starter</div>
+          <div class="plan-price">~$4/mo</div>
+          <div class="plan-spec">1 vCPU · 2 GB RAM · 20 GB SSD</div>
+        </div>
+        <div class="plan-card" onclick="selectPlan('standard', this)">
+          <div class="plan-name">Standard</div>
+          <div class="plan-price">~$7/mo</div>
+          <div class="plan-spec">2 vCPU · 4 GB RAM · 40 GB SSD</div>
+        </div>
+        <div class="plan-card" onclick="selectPlan('pro', this)">
+          <div class="plan-name">Pro</div>
+          <div class="plan-price">~$13/mo</div>
+          <div class="plan-spec">2 vCPU · 8 GB RAM · 80 GB SSD</div>
+        </div>
+      </div>
+    </div>
+    <div class="error-msg" id="vpsError"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:.75rem" onclick="orderVps()">Provision VPS</button>
+    <button class="btn btn-outline" style="width:100%;margin-top:.5rem" onclick="closeOrderModal()">Cancel</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script type="module">
+  import { initializeApp }  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, onAuthStateChanged, signOut as fbSignOut }
+    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+  const fbApp = initializeApp(window.FIREBASE_CONFIG);
+  const auth  = getAuth(fbApp);
+  const API   = window.API_BASE;
+
+  async function getToken() { return auth.currentUser?.getIdToken(); }
+
+  onAuthStateChanged(auth, async user => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    const email = user.email ?? '';
+    document.getElementById('userEmail').textContent = email;
+    document.getElementById('userAvatar').textContent = email[0]?.toUpperCase() ?? '?';
+    await loadVps();
+  });
+
+  async function loadVps() {
+    const token = await getToken();
+    document.getElementById('vpsLoading').style.display = 'block';
+    const res = await fetch(`${API}/v1/vps`, { headers: { Authorization: `Bearer ${token}` } });
+    document.getElementById('vpsLoading').style.display = 'none';
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      // 503 = Hetzner not configured
+      if (res.status === 503) {
+        document.getElementById('vpsGrid').innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
+            </svg>
+            <p style="margin-bottom:.5rem;color:var(--text);font-weight:600">Hetzner API token not configured</p>
+            <p style="font-size:.82rem;max-width:400px">Set <code>HETZNER_API_TOKEN</code> in your Railway environment variables to enable VPS provisioning. Get a free token at <strong>cloud.hetzner.com → Security → API Tokens</strong>.</p>
+          </div>`;
+        return;
+      }
+      return;
+    }
+    const { vps } = await res.json();
+    renderVps(vps);
+  }
+
+  function renderVps(list) {
+    const grid = document.getElementById('vpsGrid');
+    document.getElementById('orderBtn').style.display = 'inline-flex';
+    if (!list.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
+        </svg>
+        <p>No servers yet.</p>
+        <button class="btn btn-primary btn-sm" onclick="openOrderModal()">Deploy your first server</button>
+      </div>`;
+      return;
+    }
+
+    const statusColor = { running:'badge-green', stopped:'badge-red', creating:'badge-yellow', error:'badge-red' };
+    grid.innerHTML = list.map(v => `
+      <div class="vps-card">
+        <div class="vps-card-header">
+          <span class="vps-name">${esc(v.name)}</span>
+          <span class="badge ${statusColor[v.status] ?? 'badge-yellow'}">${v.status}</span>
+        </div>
+        <div class="vps-meta">
+          <span>${v.cores} vCPU · ${v.memory_gb ?? '?'} GB RAM · ${v.disk_gb} GB SSD</span>
+          <span>Plan: <strong>${v.plan}</strong> · Hetzner ${v.image ?? 'ubuntu-22.04'}</span>
+          ${v.ip_address ? `
+            <span>IP: <code>${esc(v.ip_address)}</code>
+              <button onclick="copyText('${esc(v.ip_address)}')" style="background:none;border:none;color:var(--primary-h);cursor:pointer;font-size:.75rem;margin-left:.25rem">Copy</button>
+            </span>` : '<span style="color:var(--muted)">IP provisioning…</span>'}
+          <span>Created: ${new Date(v.created_at).toLocaleDateString()}</span>
+        </div>
+        <div class="vps-actions">
+          ${v.status === 'stopped' ? `<button class="btn btn-primary btn-sm" onclick="controlVps('${v.id}','start')">Start</button>` : ''}
+          ${v.status === 'running' ? `<button class="btn btn-outline btn-sm" onclick="controlVps('${v.id}','stop')">Stop</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="destroyVps('${v.id}','${esc(v.name)}')">Destroy</button>
+        </div>
+      </div>`).join('');
+  }
+
+  window.copyText = (text) => {
+    navigator.clipboard.writeText(text).then(() => showToast('IP copied'));
+  };
+
+  window.orderVps = async () => {
+    const name = document.getElementById('vpsName').value.trim();
+    const plan = window._selectedPlan ?? 'starter';
+    const errEl = document.getElementById('vpsError');
+    errEl.style.display = 'none';
+    if (!name) { errEl.textContent = 'Hostname is required'; errEl.style.display = 'block'; return; }
+
+    const token = await getToken();
+    const res = await fetch(`${API}/v1/vps`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, plan }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.style.display = 'block'; return; }
+    closeOrderModal();
+    showToast('VPS is being provisioned — check back in a moment!');
+    await loadVps();
+  };
+
+  window.controlVps = async (id, action) => {
+    const token = await getToken();
+    await fetch(`${API}/v1/vps/${id}/${action}`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }
+    });
+    showToast(`VPS ${action} requested`);
+    setTimeout(loadVps, 1500);
+  };
+
+  window.destroyVps = async (id, name) => {
+    if (!confirm(`Destroy "${name}"? This is permanent.`)) return;
+    const token = await getToken();
+    await fetch(`${API}/v1/vps/${id}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+    });
+    showToast('VPS destroyed');
+    await loadVps();
+  };
+
+  window.signOut = async () => { await fbSignOut(auth); window.location.href = 'index.html'; };
+
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+</script>
+
+<script>
+  window._selectedPlan = 'starter';
+
+  function openOrderModal() {
+    document.getElementById('orderModal').classList.add('open');
+    document.getElementById('vpsName').value = '';
+    document.getElementById('vpsError').style.display = 'none';
+  }
+  function closeOrderModal() { document.getElementById('orderModal').classList.remove('open'); }
+
+  function selectPlan(plan, el) {
+    window._selectedPlan = plan;
+    document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+</script>
+</body>
+</html>

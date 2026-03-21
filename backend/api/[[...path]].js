@@ -1,98 +1,63 @@
-// Vercel serverless handler — maximally defensive
-// Uses dynamic import so any crash in app.js is caught, not a top-level crash
+/**
+ * Vercel serverless handler — serves the Fastify app for all routes.
+ * Updated to work with Fastify instead of Express.
+ */
 
 let appPromise = null;
 
-function getApp() {
+function getFastifyApp() {
   if (!appPromise) {
-    appPromise = import('../src/app.js')
-      .then((mod) => mod.buildApp())
+    appPromise = import('../src/server.js')
+      .then((mod) => mod.default())
       .catch((err) => {
-        console.error('[INIT] buildApp failed:', err);
-        appPromise = null; // allow retry on next invocation
+        console.error('[INIT] Fastify server failed:', err);
+        appPromise = null;
         throw err;
       });
   }
   return appPromise;
 }
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-API-Key',
+  'Access-Control-Allow-Credentials': 'true',
+};
+
 export default async function handler(req, res) {
-  // Set CORS headers for every response (even errors)
+  // Allow any origin (CORS is also handled inside Fastify, but set here as safety)
   const origin = req.headers.origin || '*';
   res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-API-Key');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
 
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(204).end();
 
-  let fastify;
+  let fastifyApp;
   try {
-    fastify = await getApp();
+    fastifyApp = await getFastifyApp();
   } catch (err) {
     console.error('[HANDLER] App init error:', err);
     return res.status(500).json({
       error: 'Backend initialisation failed',
-      message: err.message || String(err),
-      hint: 'Check Vercel Runtime Logs → likely MongoDB Atlas IP whitelist or env var issue.',
+      message: err.message,
+      hint: 'Check Vercel Runtime Logs for env var or Firebase credential issues.',
     });
   }
 
+  // Let Fastify handle the native Node request/response streams.
+  // This avoids re-serializing payloads and fixes "Invalid JSON" issues.
   try {
-    const rawPath = req.query?.path;
-    const joinedPath = Array.isArray(rawPath)
-      ? rawPath.join('/')
-      : typeof rawPath === 'string'
-        ? rawPath
-        : '';
-
-    let url = req.url || '';
-    if (joinedPath) {
-      const normalized = `/api/${joinedPath}`;
-      // In some Vercel invocations nested paths arrive partially in req.url.
-      if (!url || !url.includes(joinedPath)) {
-        url = normalized;
-      }
-    }
-    if (!url || url === '/') url = '/api';
-    if (!url.startsWith('/api')) {
-      // Vercel can pass '/auth/...' for this catch-all route.
-      // Preserve the full nested path and prepend '/api'.
-      url = `/api${url.startsWith('/') ? url : `/${url}`}`;
-    }
-
-    const payload =
-      req.method !== 'GET' && req.method !== 'HEAD'
-        ? typeof req.body === 'string'
-          ? req.body
-          : JSON.stringify(req.body || {})
-        : undefined;
-
-    const response = await fastify.inject({
-      method: req.method,
-      url,
-      headers: req.headers,
-      payload,
+    await new Promise((resolve, reject) => {
+      res.on('finish', resolve);
+      res.on('close', resolve);
+      res.on('error', reject);
+      fastifyApp.server.emit('request', req, res);
     });
-
-    res.status(response.statusCode);
-    const headers = response.headers;
-    if (headers) {
-      for (const [k, v] of Object.entries(headers)) {
-        // Skip transfer-encoding and CORS headers (we handle CORS ourselves above)
-        if (k === 'transfer-encoding') continue;
-        if (k.startsWith('access-control-')) continue;
-        res.setHeader(k, v);
-      }
-    }
-    res.end(response.payload);
-  } catch (err) {
-    console.error('[HANDLER] Request error:', err);
+  } catch (error) {
+    console.error('[HANDLER] Request processing error:', error);
     res.status(500).json({
-      error: 'Server error',
-      message: err.message || 'Unknown error',
+      error: 'Request processing failed',
+      message: error.message,
     });
   }
 }

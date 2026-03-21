@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Models — Eior</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .dash-layout { display: flex; height: 100vh; overflow: hidden; }
+    .sidebar {
+      width: 220px; flex-shrink: 0; display: flex; flex-direction: column;
+      background: var(--surface); border-right: 1px solid var(--border); overflow: hidden;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: .5rem;
+      padding: 1.4rem 1.25rem 1.2rem; font-size: 1.15rem; font-weight: 800;
+      color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .sidebar-logo span { color: var(--primary-h); }
+    .sidebar-logo svg { color: var(--primary-h); }
+    .sidebar-nav { display: flex; flex-direction: column; padding: .75rem .75rem 0; gap: .15rem; flex: 1; }
+    .sidebar-nav a {
+      display: flex; align-items: center; gap: .7rem; padding: .6rem .9rem; border-radius: 8px;
+      color: var(--muted); font-size: .875rem; font-weight: 500; text-decoration: none;
+      transition: background .15s, color .15s; white-space: nowrap;
+    }
+    .sidebar-nav a svg { flex-shrink: 0; opacity: .75; }
+    .sidebar-nav a:hover { background: rgba(255,255,255,.055); color: var(--text); }
+    .sidebar-nav a:hover svg { opacity: 1; }
+    .sidebar-nav a.active { background: rgba(99,102,241,.15); color: #a5b4fc; font-weight: 600; }
+    .sidebar-nav a.active svg { opacity: 1; color: #a5b4fc; }
+    .sidebar-footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 1rem 1.25rem; }
+    .sidebar-user { display: flex; align-items: center; gap: .65rem; margin-bottom: .75rem; }
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%; background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .user-name { font-size: .8rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-label { font-size: .7rem; color: var(--muted); }
+    .main-scroll { flex: 1; overflow-y: auto; padding: 2.5rem 2.5rem; }
+    .models-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; margin-top: 1.5rem; }
+    .cap-pill {
+      display: inline-flex; align-items: center; gap: .3rem;
+      background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.2);
+      color: #a5b4fc; border-radius: 20px; padding: .2rem .65rem; font-size: .72rem; font-weight: 600;
+    }
+    .caps-row { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .85rem; }
+  </style>
+</head>
+<body>
+<div class="dash-layout">
+  <aside class="sidebar">
+    <a class="sidebar-logo" href="/">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+      Ei<span>or</span>
+    </a>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Workbench
+      </a>
+      <a href="models.html" class="active">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+        </svg>
+        Models
+      </a>
+      <a href="vps.html">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
+          <line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+        </svg>
+        VPS
+      </a>
+      <a href="docs.html">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        Docs
+      </a>
+      <a href="settings.html">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        Settings
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div>
+          <div class="user-name" id="userEmail">Loading…</div>
+          <div class="user-label">Free plan</div>
+        </div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="signOut()" style="width:100%">Sign out</button>
+    </div>
+  </aside>
+
+  <main style="flex:1;overflow-y:auto;padding:2.5rem">
+    <div class="page-header">
+      <h1>Models</h1>
+      <p>Open-source AI models available through the Eior API</p>
+    </div>
+
+    <!-- Text models -->
+    <h2 style="font-size:1rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1rem">Language Models</h2>
+    <div class="models-grid">
+
+      <div class="model-card" onclick="tryModel('eior-chat')">
+        <div class="model-card-header">
+          <div>
+            <div class="model-name">Eior Chat</div>
+            <div class="model-id">eior-chat</div>
+          </div>
+          <span class="badge badge-green">Default</span>
+        </div>
+        <div class="caps-row">
+          <span class="cap-pill">Chat</span>
+          <span class="cap-pill">Tool calling</span>
+          <span class="cap-pill">Streaming</span>
+        </div>
+        <div class="model-desc">General-purpose conversational AI. Best for most tasks — writing, analysis, Q&amp;A, and reasoning. Backed by Llama 3.1 8B via Ollama.</div>
+        <div class="model-stats">
+          <div class="model-stat"><div class="model-stat-label">Context</div><div class="model-stat-val">128K tokens</div></div>
+          <div class="model-stat"><div class="model-stat-label">Provider</div><div class="model-stat-val">Ollama / Groq</div></div>
+          <div class="model-stat"><div class="model-stat-label">Price</div><div class="model-stat-val">Free</div></div>
+        </div>
+      </div>
+
+      <div class="model-card" onclick="tryModel('eior-fast')">
+        <div class="model-card-header">
+          <div>
+            <div class="model-name">Eior Fast</div>
+            <div class="model-id">eior-fast</div>
+          </div>
+          <span class="badge badge-blue">Fastest</span>
+        </div>
+        <div class="caps-row">
+          <span class="cap-pill">Chat</span>
+          <span class="cap-pill">Streaming</span>
+          <span class="cap-pill">Low latency</span>
+        </div>
+        <div class="model-desc">Optimized for speed. Lightweight 3.8B parameter model — perfect for high-throughput applications and interactive responses. Backed by Phi-3 Mini.</div>
+        <div class="model-stats">
+          <div class="model-stat"><div class="model-stat-label">Context</div><div class="model-stat-val">128K tokens</div></div>
+          <div class="model-stat"><div class="model-stat-label">Provider</div><div class="model-stat-val">Ollama</div></div>
+          <div class="model-stat"><div class="model-stat-label">Price</div><div class="model-stat-val">Free</div></div>
+        </div>
+      </div>
+
+      <div class="model-card" onclick="tryModel('eior-code')">
+        <div class="model-card-header">
+          <div>
+            <div class="model-name">Eior Code</div>
+            <div class="model-id">eior-code</div>
+          </div>
+          <span class="badge badge-yellow">Specialized</span>
+        </div>
+        <div class="caps-row">
+          <span class="cap-pill">Code</span>
+          <span class="cap-pill">Tool calling</span>
+          <span class="cap-pill">Streaming</span>
+        </div>
+        <div class="model-desc">Specialized for software engineering. Excels at writing, reviewing, and explaining code across 90+ languages. Backed by Qwen 2.5 Coder 7B.</div>
+        <div class="model-stats">
+          <div class="model-stat"><div class="model-stat-label">Context</div><div class="model-stat-val">128K tokens</div></div>
+          <div class="model-stat"><div class="model-stat-label">Provider</div><div class="model-stat-val">Ollama</div></div>
+          <div class="model-stat"><div class="model-stat-label">Price</div><div class="model-stat-val">Free</div></div>
+        </div>
+      </div>
+
+      <div class="model-card" onclick="tryModel('eior-vision')">
+        <div class="model-card-header">
+          <div>
+            <div class="model-name">Eior Vision</div>
+            <div class="model-id">eior-vision</div>
+          </div>
+          <span class="badge badge-blue">Multimodal</span>
+        </div>
+        <div class="caps-row">
+          <span class="cap-pill">Vision</span>
+          <span class="cap-pill">Image analysis</span>
+          <span class="cap-pill">Chat</span>
+        </div>
+        <div class="model-desc">Understands and analyzes images. Send base64 images or image URLs in your messages. Ideal for photo analysis, OCR, and visual Q&amp;A. Backed by LLaVA 7B.</div>
+        <div class="model-stats">
+          <div class="model-stat"><div class="model-stat-label">Context</div><div class="model-stat-val">4K tokens</div></div>
+          <div class="model-stat"><div class="model-stat-label">Provider</div><div class="model-stat-val">Ollama</div></div>
+          <div class="model-stat"><div class="model-stat-label">Price</div><div class="model-stat-val">Free</div></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Embedding models -->
+    <h2 style="font-size:1rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:2rem 0 1rem">Embedding Models</h2>
+    <div class="models-grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">
+      <div class="model-card">
+        <div class="model-card-header">
+          <div>
+            <div class="model-name">Eior Embed</div>
+            <div class="model-id">eior-embed</div>
+          </div>
+          <span class="badge badge-green">Available</span>
+        </div>
+        <div class="caps-row"><span class="cap-pill">Embeddings</span><span class="cap-pill">Semantic search</span></div>
+        <div class="model-desc">High-quality text embeddings for semantic search, RAG pipelines, and similarity tasks. Returns float32 or base64 vectors.</div>
+        <div class="model-stats">
+          <div class="model-stat"><div class="model-stat-label">Dimensions</div><div class="model-stat-val">768–4096</div></div>
+          <div class="model-stat"><div class="model-stat-label">Max input</div><div class="model-stat-val">8K tokens</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audio models -->
+    <h2 style="font-size:1rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:2rem 0 1rem">Audio Models</h2>
+    <div class="models-grid">
+      <div class="model-card">
+        <div class="model-card-header">
+          <div>
+            <div class="model-name">Eior TTS</div>
+            <div class="model-id">eior-tts</div>
+          </div>
+          <span class="badge badge-green">Available</span>
+        </div>
+        <div class="caps-row"><span class="cap-pill">Text-to-Speech</span><span class="cap-pill">MP3</span></div>
+        <div class="model-desc">Convert text to natural-sounding speech. Supports multiple voices. Free via StreamElements TTS.</div>
+        <div class="model-stats">
+          <div class="model-stat"><div class="model-stat-label">Format</div><div class="model-stat-val">MP3</div></div>
+          <div class="model-stat"><div class="model-stat-label">Voices</div><div class="model-stat-val">6+</div></div>
+        </div>
+      </div>
+      <div class="model-card">
+        <div class="model-card-header">
+          <div>
+            <div class="model-name">Eior Whisper</div>
+            <div class="model-id">eior-stt</div>
+          </div>
+          <span class="badge badge-green">Available</span>
+        </div>
+        <div class="caps-row"><span class="cap-pill">Speech-to-Text</span><span class="cap-pill">Translation</span></div>
+        <div class="model-desc">Transcribe audio files to text with high accuracy. Supports 50+ languages and translation to English. Backed by Groq Whisper.</div>
+        <div class="model-stats">
+          <div class="model-stat"><div class="model-stat-label">Max file</div><div class="model-stat-val">25 MB</div></div>
+          <div class="model-stat"><div class="model-stat-label">Languages</div><div class="model-stat-val">50+</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:2.5rem;padding:1.25rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
+      <div style="font-size:.875rem;font-weight:600;margin-bottom:.4rem">All models are free during beta</div>
+      <div style="font-size:.8rem;color:var(--muted)">Rate limits apply: 60 requests/min, 1000 requests/day per API key. No credit card required.</div>
+    </div>
+  </main>
+</div>
+
+<script src="config.js"></script>
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, onAuthStateChanged, signOut as fbSignOut }
+    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  const auth = getAuth(initializeApp(window.FIREBASE_CONFIG));
+  onAuthStateChanged(auth, user => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    const email = user.email ?? '';
+    document.getElementById('userEmail').textContent = email;
+    document.getElementById('userAvatar').textContent = email[0]?.toUpperCase() ?? '?';
+  });
+  window.signOut = async () => { await fbSignOut(auth); window.location.href = 'index.html'; };
+  window.tryModel = (model) => {
+    sessionStorage.setItem('eior_model', model);
+    window.location.href = 'dashboard.html';
+  };
+</script>
+</body>
+</html>

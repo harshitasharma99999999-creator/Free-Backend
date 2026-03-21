@@ -1,105 +1,176 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
+  MessageSquare,
   Key,
   BarChart3,
   BookOpen,
+  Settings,
   LogOut,
-  LayoutDashboard,
+  Menu,
+  X,
+  Sparkles,
+  Plus,
+  ChevronDown,
+  Code2,
 } from 'lucide-react';
 
-const nav = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/dashboard/keys', label: 'API Keys', icon: Key },
-  { href: '/dashboard/usage', label: 'Usage', icon: BarChart3 },
-  { href: '/dashboard/docs', label: 'Documentation', icon: BookOpen },
+const NAV = [
+  { href: '/dashboard',              label: 'Chat',          icon: MessageSquare, exact: true },
+  { href: '/dashboard/vibecode',     label: 'Vibecode',      icon: Sparkles },
+  { href: '/dashboard/keys',         label: 'API Keys',      icon: Key },
+  { href: '/dashboard/docs',         label: 'Docs',          icon: BookOpen },
+  { href: '/dashboard/usage',        label: 'Usage',         icon: BarChart3 },
+  { href: '/dashboard/settings',     label: 'Settings',      icon: Settings },
 ];
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { user, loading, logout, backendConnected } = useAuth();
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const pathname  = usePathname();
+  const router    = useRouter();
+  const { user, loading, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [modelOpen, setModelOpen] = useState(false);
+  const [model, setModel] = useState('EIOR');
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
+  useEffect(() => { if (typeof window !== 'undefined' && window.innerWidth < 768) setOpen(false); }, [pathname]);
+  useEffect(() => { if (!loading && !user) router.push('/login'); }, [user, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
-  }
-
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0f0f0f]">
+      <div className="h-7 w-7 rounded-full border-2 border-[#10a37f] border-t-transparent animate-spin" />
+    </div>
+  );
   if (!user) return null;
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-background">
-      <aside className="w-full md:w-56 border-b md:border-b-0 md:border-r border-border p-4 flex flex-row md:flex-col gap-2">
-        <div className="flex items-center gap-2 mb-4">
-          <Link href="/dashboard" className="font-semibold text-lg">
-            Free API
+    <div className="min-h-screen flex bg-[#0f0f0f] text-[#ececec]">
+
+      {/* ── Mobile overlay ───────────────────────────────────────────────── */}
+      {open && (
+        <div className="fixed inset-0 z-20 bg-black/60 md:hidden" onClick={() => setOpen(false)} />
+      )}
+
+      {/* ── Sidebar ──────────────────────────────────────────────────────── */}
+      <aside className={cn(
+        'fixed md:static inset-y-0 left-0 z-30 w-[260px] flex flex-col',
+        'bg-[#171717] transition-transform duration-200',
+        open ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+      )}>
+
+        {/* Logo + new chat */}
+        <div className="flex items-center justify-between px-3 pt-3 pb-2">
+          <Link href="/dashboard" className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
+            <span className="h-6 w-6 rounded-full bg-[#10a37f] flex items-center justify-center shrink-0">
+              <Code2 className="h-3.5 w-3.5 text-white" />
+            </span>
+            <span className="font-semibold text-sm text-white">EIOR</span>
           </Link>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-[#8e8ea0] hover:text-white"
+            title="New chat"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
         </div>
-        <nav className="flex md:flex-col gap-1 flex-1 overflow-x-auto">
-          {nav.map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href;
+
+        {/* Model selector */}
+        <div className="px-3 py-1">
+          <button
+            onClick={() => setModelOpen(!modelOpen)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-white/5 transition-colors text-sm"
+          >
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#10a37f]" />
+              <span className="font-medium text-white">{model}</span>
+            </span>
+            <ChevronDown className={cn('h-3.5 w-3.5 text-[#8e8ea0] transition-transform', modelOpen && 'rotate-180')} />
+          </button>
+          {modelOpen && (
+            <div className="mt-1 rounded-xl border border-white/10 bg-[#212121] overflow-hidden py-1">
+              {[
+                { id: 'EIOR',          sub: 'eior-v1 · General purpose' },
+                { id: 'EIOR Advanced', sub: 'eior-advanced · Deep reasoning' },
+                { id: 'EIOR Coder',    sub: 'eior-coder · Code generation' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => { setModel(m.id); setModelOpen(false); }}
+                  className={cn(
+                    'w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors',
+                    model === m.id && 'text-[#10a37f]',
+                  )}
+                >
+                  <p className="font-medium">{m.id}</p>
+                  <p className="text-xs text-[#8e8ea0]">{m.sub}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
+          {NAV.map(({ href, label, icon: Icon, exact }) => {
+            const active = exact ? pathname === href : pathname.startsWith(href);
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={href}
+                href={href}
                 className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                  'flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors',
                   active
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-accent text-muted-foreground hover:text-foreground'
+                    ? 'bg-white/10 text-white font-medium'
+                    : 'text-[#8e8ea0] hover:bg-white/5 hover:text-white',
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                {item.label}
+                {label}
               </Link>
             );
           })}
         </nav>
-        <div className="flex items-center gap-2 border-t border-border pt-4 mt-auto">
-          <span className="text-sm text-muted-foreground truncate flex-1">
-            {user.email}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              logout();
-              router.push('/');
-            }}
-            title="Sign out"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+
+        {/* User */}
+        <div className="px-3 py-3 border-t border-white/5">
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/5 transition-colors group">
+            <div className="h-7 w-7 rounded-full bg-[#10a37f]/20 border border-[#10a37f]/40 flex items-center justify-center shrink-0 text-xs font-bold text-[#10a37f] uppercase">
+              {user.email?.[0] || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-white truncate">{user.email}</p>
+            </div>
+            <button
+              onClick={() => { logout(); router.push('/'); }}
+              className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-white/10 transition-all text-[#8e8ea0] hover:text-white"
+              title="Sign out"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </aside>
-      <main className="flex-1 p-6 overflow-auto">
-        {!backendConnected && (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-            Connect your backend to create API keys and track usage. See DEPLOY.md in the project for steps.
-          </div>
-        )}
-        {children}
-      </main>
+
+      {/* ── Main ─────────────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+
+        {/* Mobile header */}
+        <header className="md:hidden h-12 flex items-center gap-3 px-4 border-b border-white/5 bg-[#0f0f0f] shrink-0">
+          <button onClick={() => setOpen(true)} className="p-1.5 rounded-lg text-[#8e8ea0] hover:text-white hover:bg-white/5">
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+          <span className="font-semibold text-sm">{model}</span>
+        </header>
+
+        <main className="flex-1 overflow-hidden">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
