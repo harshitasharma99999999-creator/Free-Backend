@@ -41,8 +41,13 @@ export const config = {
     requestsPerWindow: parseInt(process.env.RATE_LIMIT_REQUESTS || '100', 10),
     windowSeconds: parseInt(process.env.RATE_LIMIT_WINDOW || '60', 10),
   },
+  groq: {
+    apiKey: (process.env.GROQ_API_KEY || '').trim() || null,
+    baseUrl: 'https://api.groq.com/openai/v1',
+    model: (process.env.GROQ_MODEL || 'llama-3.3-70b-versatile').trim(),
+  },
   ollama: {
-    baseUrl: (process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/+$/, ''),
+    baseUrl: (process.env.OLLAMA_BASE_URL || '').trim().replace(/\/+$/, ''),
     model: process.env.OLLAMA_MODEL || 'eior',
     embeddingsModel: process.env.OLLAMA_EMBEDDINGS_MODEL || 'nomic-embed-text',
     imageGenUrl: process.env.IMAGE_GEN_URL ? process.env.IMAGE_GEN_URL.replace(/\/+$/, '') : null,
@@ -79,5 +84,8 @@ export const config = {
     // For server-side verification. Set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY, or use GOOGLE_APPLICATION_CREDENTIALS.
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
+  },
+  hetzner: {
+    apiToken: (process.env.HETZNER_API_TOKEN || '').trim() || null,
   },
 };

@@ -13,6 +13,7 @@ import openaiRoutes from './routes/openai.js';
 import eiorOpenaiRoutes from './routes/eiorOpenai.js';
 import freeChatRoutes from './routes/freeChat.js';
 import freeVibecodeRoutes from './routes/freeVibecode.js';
+import vpsRoutes from './routes/vps.js';
 
 export async function buildApp() {
   const fastify = Fastify({
@@ -46,11 +47,12 @@ export async function buildApp() {
       }
 
       if (Array.isArray(allowedOrigins)) {
-        if (allowedOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
+        const allowed =
+          allowedOrigins.includes(origin) ||
+          allowedOrigins.includes('*') ||
+          /^https?:\/\/[^.]+\.vercel\.app$/.test(origin) ||
+          /^https?:\/\/[^.]+\.web\.app$/.test(origin);
+        callback(allowed ? null : new Error('Not allowed by CORS'), allowed);
         return;
       }
 
@@ -89,6 +91,9 @@ export async function buildApp() {
 
   // EIOR OpenAI-compatible API for OpenClaw integration
   await fastify.register(eiorOpenaiRoutes, { prefix: '/eior/v1' });
+
+  // VPS management — Hetzner Cloud servers for running OpenClaw
+  await fastify.register(vpsRoutes, { prefix: '/api/vps' });
 
   // Root health-check endpoint (no DB needed)
   fastify.get('/api', (_, reply) => {

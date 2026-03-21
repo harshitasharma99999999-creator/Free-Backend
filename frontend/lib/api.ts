@@ -65,7 +65,7 @@ function storeJwt(token: string) {
   if (typeof window !== 'undefined') sessionStorage.setItem(JWT_KEY, token);
 }
 
-async function getBackendJwt(): Promise<string> {
+export async function getBackendJwt(): Promise<string> {
   const cached = storedJwt();
   if (cached) return cached;
 

@@ -2,6 +2,21 @@ import { randomUUID } from 'node:crypto';
 import { checkRateLimit } from '../lib/rateLimit.js';
 import { isValidApiKeyFormat } from '../lib/apiKey.js';
 import { config } from '../config.js';
+
+function rateLimitExceededBody(rl) {
+  const retryAfterSec = rl.reset > 0 ? Math.max(1, Math.ceil((rl.reset - Date.now()) / 1000)) : config.rateLimit.windowSeconds;
+  return {
+    retryAfterSec,
+    body: {
+      error: {
+        message: `Rate limit exceeded. You have used all ${rl.limit} requests allowed per ${config.rateLimit.windowSeconds} seconds. Wait ${retryAfterSec}s before retrying. Need higher limits? Visit /pricing to upgrade your plan.`,
+        type: 'rate_limit_error',
+        code: 'rate_limit_exceeded',
+        upgrade_url: '/pricing',
+      },
+    },
+  };
+}
 import { getOllamaHostHeader, ollamaJson, ollamaRequest } from '../lib/ollamaHttp.js';
 
 export default async function openaiRoutes(fastify) {
@@ -49,6 +64,11 @@ export default async function openaiRoutes(fastify) {
         error: { message: 'Invalid API key.', type: 'invalid_request_error', code: 'invalid_api_key' },
       });
     }
+    if (keyDoc.active === false) {
+      return reply.code(403).send({
+        error: { message: 'This API key has been revoked. Generate a new key from your dashboard.', type: 'invalid_request_error', code: 'api_key_revoked' },
+      });
+    }
     request.apiKey = keyDoc;
 
     // Rate limiting
@@ -57,20 +77,26 @@ export default async function openaiRoutes(fastify) {
     reply.header('X-RateLimit-Remaining', rl.remaining);
     reply.header('X-RateLimit-Reset', rl.reset);
     if (!rl.success) {
-      return reply.code(429).send({
-        error: { message: 'Rate limit exceeded. Try again later.', type: 'rate_limit_error', code: 'rate_limit_exceeded' },
-      });
+      const { retryAfterSec, body } = rateLimitExceededBody(rl);
+      reply.header('Retry-After', retryAfterSec);
+      return reply.code(429).send(body);
     }
 
     // Usage tracking (non-fatal)
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      await db.collection('usage').updateOne(
-        { apiKeyId: keyDoc._id, date: today },
-        { $inc: { count: 1 } },
-        { upsert: true }
-      );
+      await Promise.all([
+        db.collection('usage').updateOne(
+          { apiKeyId: keyDoc._id, date: today },
+          { $inc: { count: 1 } },
+          { upsert: true }
+        ),
+        db.collection('api_keys').updateOne(
+          { _id: keyDoc._id },
+          { $inc: { usageCount: 1 } }
+        ),
+      ]);
     } catch (_) {}
   });
 

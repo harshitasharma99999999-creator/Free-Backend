@@ -1,28 +1,50 @@
 import { checkRateLimit } from '../lib/rateLimit.js';
 import { isValidApiKeyFormat } from '../lib/apiKey.js';
 import { config } from '../config.js';
+
+function rateLimitExceededResponse(rl) {
+  const retryAfterSec = rl.reset > 0 ? Math.max(1, Math.ceil((rl.reset - Date.now()) / 1000)) : config.rateLimit.windowSeconds;
+  return {
+    code: 429,
+    body: {
+      error: 'Rate limit exceeded',
+      message: `You have used all ${rl.limit} requests allowed per ${config.rateLimit.windowSeconds} seconds. Please wait ${retryAfterSec}s before retrying.`,
+      retryAfter: retryAfterSec,
+      upgrade: {
+        message: 'Need higher rate limits? Upgrade your plan for more requests, higher quotas, and priority access.',
+        url: '/pricing',
+      },
+    },
+    retryAfterSec,
+  };
+}
 import { getOllamaHostHeader, ollamaRequest } from '../lib/ollamaHttp.js';
 
 export default async function publicApiRoutes(fastify) {
-  const getCollections = () => {
-    const db = fastify.mongo?.db;
-    if (!db) throw new Error('Database unavailable');
-    return {
-      apiKeys: db.collection('api_keys'),
-      usage: db.collection('usage'),
-      clientUsers: db.collection('client_users'),
-    };
+  const getDb = () => {
+    if (!fastify.db) throw new Error('Database unavailable');
+    return fastify.db;
   };
 
   async function recordUsage(apiKeyId, count = 1) {
-    const { usage } = getCollections();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    await usage.updateOne(
-      { apiKeyId, date: today },
-      { $inc: { count } },
-      { upsert: true }
-    );
+    if (count === 0) return;
+    try {
+      const db = getDb();
+      const { FieldValue } = await import('firebase-admin/firestore');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dateStr = today.toISOString().slice(0, 10);
+      const usageDocId = `${apiKeyId}_${dateStr}`;
+      await Promise.all([
+        db.collection('usage').doc(usageDocId).set(
+          { apiKeyId, date: today, count: FieldValue.increment(count) },
+          { merge: true }
+        ),
+        db.collection('api_keys').doc(apiKeyId).update({ usageCount: FieldValue.increment(count) }),
+      ]);
+    } catch {
+      // non-critical — don't fail the request
+    }
   }
 
   function getBearerToken(request) {
@@ -68,44 +90,36 @@ export default async function publicApiRoutes(fastify) {
   }
 
   fastify.addHook('preHandler', async (request, reply) => {
-    let apiKeys;
-    try {
-      ({ apiKeys } = getCollections());
-    } catch {
+    let db;
+    try { db = getDb(); } catch {
       return reply.code(503).send({ error: 'Database unavailable' });
     }
 
-    // Unified API key extraction: support multiple formats
+    // API key extraction — header only (query params are insecure: logged in server access logs)
     let rawKey = null;
     let keySource = null;
 
-    // 1. Check X-API-Key header (primary method)
+    // 1. X-API-Key header (primary)
     if (request.headers['x-api-key']) {
       rawKey = request.headers['x-api-key'];
       keySource = 'X-API-Key header';
     }
-    // 2. Check Authorization: Bearer format (fallback)
+    // 2. Authorization: Bearer fk_... (OpenAI-SDK compatible fallback)
     else if (request.headers.authorization) {
       const authHeader = request.headers.authorization;
       if (typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')) {
         const token = authHeader.slice(7).trim();
-        // Check if it's an API key format (fk_...) not a JWT
         if (token && token.startsWith('fk_')) {
           rawKey = token;
           keySource = 'Authorization: Bearer header';
         }
       }
     }
-    // 3. Check query parameter (least preferred)
-    if (!rawKey && request.query?.apiKey) {
-      rawKey = request.query.apiKey;
-      keySource = 'apiKey query parameter';
-    }
 
     if (!rawKey) {
       return reply.code(401).send({
         error: 'Missing API key',
-        message: 'Provide API key via X-API-Key header, Authorization: Bearer header, or apiKey query parameter.',
+        message: 'Provide your API key via X-API-Key header or Authorization: Bearer <key>.',
       });
     }
 
@@ -113,28 +127,34 @@ export default async function publicApiRoutes(fastify) {
     if (!isValidApiKeyFormat(key)) {
       return reply.code(401).send({
         error: 'Invalid API key format',
-        message: `API key must match format fk_<32-characters>. Received from: ${keySource}.`,
+        message: `API key must start with "fk_" and be 36 characters. Received from: ${keySource}.`,
       });
     }
 
-    const keyDoc = await apiKeys.findOne({ key });
-    if (!keyDoc) {
+    const keySnap = await db.collection('api_keys').where('key', '==', key).limit(1).get();
+    if (keySnap.empty) {
       return reply.code(401).send({
         error: 'Invalid API key',
-        message: 'API key not found or has been revoked.',
+        message: 'API key not found. Check your key or generate a new one from the dashboard.',
+      });
+    }
+    const keyDoc = { ...keySnap.docs[0].data(), _id: keySnap.docs[0].id };
+    if (keyDoc.active === false) {
+      return reply.code(403).send({
+        error: 'API key revoked',
+        message: 'This API key has been revoked. Generate a new key from your dashboard.',
       });
     }
     request.apiKey = keyDoc;
 
-    const rl = await checkRateLimit(`apikey:${keyDoc._id.toString()}`);
+    const rl = await checkRateLimit(`apikey:${keyDoc._id}`);
     reply.header('X-RateLimit-Limit', rl.limit);
     reply.header('X-RateLimit-Remaining', rl.remaining);
     reply.header('X-RateLimit-Reset', rl.reset);
     if (!rl.success) {
-      return reply.code(429).send({
-        error: 'Too many requests',
-        message: 'Rate limit exceeded. Try again later.',
-      });
+      const { code, body, retryAfterSec } = rateLimitExceededResponse(rl);
+      reply.header('Retry-After', retryAfterSec);
+      return reply.code(code).send(body);
     }
 
     await recordUsage(keyDoc._id);
@@ -169,54 +189,25 @@ export default async function publicApiRoutes(fastify) {
       },
     },
     handler: async (request, reply) => {
-      let clientUsers;
-      try {
-        ({ clientUsers } = getCollections());
-      } catch {
+      let db;
+      try { db = getDb(); } catch {
         return reply.code(503).send({ error: 'Database unavailable' });
       }
-
       const appId = request.apiKey._id.toString();
       const email = request.body.email.toLowerCase();
-      const name = (request.body.name || request.body.email.split('@')[0] || 'User').trim();
+      const name = (request.body.name || email.split('@')[0] || 'User').trim();
 
-      const existing = await clientUsers.findOne({ appId, email });
-      if (existing) {
-        return reply.code(409).send({ error: 'Email already registered for this app' });
-      }
+      const existing = await db.collection('client_users')
+        .where('appId', '==', appId).where('email', '==', email).limit(1).get();
+      if (!existing.empty) return reply.code(409).send({ error: 'Email already registered for this app' });
 
       const passwordHash = await fastify.hashPassword(request.body.password);
-
-      try {
-        const { insertedId } = await clientUsers.insertOne({
-          appId,
-          email,
-          name,
-          passwordHash,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-
-        const user = {
-          id: insertedId.toString(),
-          email,
-          name,
-        };
-
-        const token = fastify.jwt.sign({
-          sub: user.id,
-          email: user.email,
-          appId,
-          type: 'client',
-        });
-
-        return reply.code(201).send({ user, token });
-      } catch (err) {
-        if (err && err.code === 11000) {
-          return reply.code(409).send({ error: 'Email already registered for this app' });
-        }
-        throw err;
-      }
+      const docRef = await db.collection('client_users').add({
+        appId, email, name, passwordHash, createdAt: new Date(), updatedAt: new Date(),
+      });
+      const user = { id: docRef.id, email, name };
+      const token = fastify.jwt.sign({ sub: user.id, email: user.email, appId, type: 'client' });
+      return reply.code(201).send({ user, token });
     },
   });
 
@@ -225,113 +216,45 @@ export default async function publicApiRoutes(fastify) {
       body: {
         type: 'object',
         required: ['email', 'password'],
-        properties: {
-          email: { type: 'string', format: 'email' },
-          password: { type: 'string' },
-        },
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            user: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                email: { type: 'string' },
-                name: { type: 'string' },
-              },
-            },
-            token: { type: 'string' },
-          },
-        },
+        properties: { email: { type: 'string', format: 'email' }, password: { type: 'string' } },
       },
     },
     handler: async (request, reply) => {
-      let clientUsers;
-      try {
-        ({ clientUsers } = getCollections());
-      } catch {
+      let db;
+      try { db = getDb(); } catch {
         return reply.code(503).send({ error: 'Database unavailable' });
       }
-
       const appId = request.apiKey._id.toString();
       const email = request.body.email.toLowerCase();
 
-      const userDoc = await clientUsers.findOne({ appId, email });
-      if (!userDoc || !userDoc.passwordHash) {
-        return reply.code(401).send({ error: 'Invalid email or password' });
-      }
+      const snap = await db.collection('client_users')
+        .where('appId', '==', appId).where('email', '==', email).limit(1).get();
+      if (snap.empty) return reply.code(401).send({ error: 'Invalid email or password' });
 
-      const ok = await fastify.verifyPassword(request.body.password, userDoc.passwordHash);
-      if (!ok) {
-        return reply.code(401).send({ error: 'Invalid email or password' });
-      }
+      const doc = snap.docs[0];
+      const userData = doc.data();
+      if (!userData.passwordHash) return reply.code(401).send({ error: 'Invalid email or password' });
 
-      const user = {
-        id: userDoc._id.toString(),
-        email: userDoc.email,
-        name: userDoc.name || 'User',
-      };
+      const ok = await fastify.verifyPassword(request.body.password, userData.passwordHash);
+      if (!ok) return reply.code(401).send({ error: 'Invalid email or password' });
 
-      const token = fastify.jwt.sign({
-        sub: user.id,
-        email: user.email,
-        appId,
-        type: 'client',
-      });
-
+      const user = { id: doc.id, email: userData.email, name: userData.name || 'User' };
+      const token = fastify.jwt.sign({ sub: user.id, email: user.email, appId, type: 'client' });
       return reply.send({ user, token });
     },
   });
 
   fastify.get('/v1/auth/me', {
     preHandler: [authenticateClientUser],
-    schema: {
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            user: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                email: { type: 'string' },
-                name: { type: 'string' },
-              },
-            },
-          },
-        },
-      },
-    },
     handler: async (request, reply) => {
-      let clientUsers;
-      try {
-        ({ clientUsers } = getCollections());
-      } catch {
+      let db;
+      try { db = getDb(); } catch {
         return reply.code(503).send({ error: 'Database unavailable' });
       }
-
-      if (!fastify.mongo?.ObjectId) {
-        return reply.code(503).send({ error: 'Database unavailable' });
-      }
-
-      const userDoc = await clientUsers.findOne({
-        _id: new fastify.mongo.ObjectId(request.clientUser.id),
-        appId: request.clientUser.appId,
-      });
-
-      if (!userDoc) {
-        return reply.code(404).send({ error: 'User not found' });
-      }
-
-      return {
-        user: {
-          id: userDoc._id.toString(),
-          email: userDoc.email,
-          name: userDoc.name || 'User',
-        },
-      };
+      const snap = await db.collection('client_users').doc(request.clientUser.id).get();
+      if (!snap.exists) return reply.code(404).send({ error: 'User not found' });
+      const u = snap.data();
+      return { user: { id: snap.id, email: u.email, name: u.name || 'User' } };
     },
   });
 
@@ -567,7 +490,6 @@ Return exactly 3 suggestions tailored to the body type and skin tone.`;
       }
 
       try {
-        await recordUsage(request.apiKey._id, 0); // already counted in preHandler
         const output = await runReplicatePrediction(config.replicate.imageModel, {
           prompt,
           negative_prompt:     negativePrompt,
